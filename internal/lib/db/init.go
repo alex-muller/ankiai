@@ -1,8 +1,8 @@
 package db
 
 import (
-	"embed"
 	"fmt"
+	"os"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3" // Важно: анонимный импорт драйвера
@@ -10,7 +10,7 @@ import (
 )
 
 // InitDB открывает соединение и автоматически применяет миграции
-func InitDB(dbPath string, embedMigrations embed.FS) (*sqlx.DB, error) {
+func InitDB(dbPath, migrationPath string) (*sqlx.DB, error) {
 	// Подключаемся к SQLite. Если файла dbPath нет, драйвер создаст его сам.
 	db, err := sqlx.Connect("sqlite3", dbPath)
 	if err != nil {
@@ -18,7 +18,8 @@ func InitDB(dbPath string, embedMigrations embed.FS) (*sqlx.DB, error) {
 	}
 
 	// Настраиваем goose для использования встроенной файловой системы
-	goose.SetBaseFS(embedMigrations)
+	fsys := os.DirFS(migrationPath)
+	goose.SetBaseFS(fsys)
 
 	// Указываем goose, с каким диалектом работаем
 	if err := goose.SetDialect("sqlite3"); err != nil {
@@ -26,7 +27,7 @@ func InitDB(dbPath string, embedMigrations embed.FS) (*sqlx.DB, error) {
 	}
 
 	// Накатываем миграции из папки "migrations"
-	if err := goose.Up(db.DB, "migrations"); err != nil {
+	if err := goose.Up(db.DB, "."); err != nil {
 		return nil, fmt.Errorf("migration error: %w", err)
 	}
 

@@ -2,12 +2,12 @@
 -- +goose StatementBegin
 CREATE TABLE words
 (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    word TEXT UNIQUE NOT NULL,
-    status        INTEGER  DEFAULT 0,
-    raw_json      TEXT,
-    error_log     TEXT,
-    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    word       TEXT UNIQUE NOT NULL,
+    status     INTEGER  DEFAULT 0,
+    raw_json   TEXT        NOT NULL DEFAULT '',
+    error_log  TEXT        NOT NULL DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE anki_cards

@@ -7,8 +7,10 @@ import (
 	"log"
 	"os"
 
+	"github.com/alex-muller/ankiai/internal/config"
 	"github.com/alex-muller/ankiai/internal/lib/db"
 	"github.com/alex-muller/ankiai/internal/lib/logger"
+	"github.com/alex-muller/ankiai/internal/module/lexicographer"
 	"github.com/alex-muller/ankiai/internal/module/word"
 	"github.com/alex-muller/ankiai/internal/run"
 )
@@ -26,14 +28,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Init DB
-	database, err := db.InitDB("./tmp/anki_vocabulary.db", embedMigrations)
+	// Conf
+	conf := config.Get()
+
+	// Db
+	database, err := db.InitDB(conf.DBPath, conf.MigrationsPath)
 	if err != nil {
 		log.Fatalf("Не удалось инициализировать приложение: %v", err)
 	}
 	defer database.Close()
 
+	// Repository
 	repository := word.NewRepository(database)
+
+	// Lexer
+	lex := lexicographer.New(repository)
 
 	command := os.Args[1]
 
@@ -51,7 +60,7 @@ func main() {
 
 	case "daemon":
 		// Запуск: ./ankiai daemon
-		run.Daemon(database)
+		run.Daemon(ctx, lex)
 
 	default:
 		fmt.Printf("Неизвестная команда: %s\n", command)

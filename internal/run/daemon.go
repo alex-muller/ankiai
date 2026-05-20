@@ -1,7 +1,18 @@
 package run
 
-import "github.com/jmoiron/sqlx"
+import (
+	"context"
+	"log/slog"
 
-func Daemon(db *sqlx.DB) {
-	select {}
+	"github.com/alex-muller/ankiai/internal/lib/logger"
+	"github.com/alex-muller/ankiai/internal/module/lexicographer"
+)
+
+func Daemon(ctx context.Context, lex *lexicographer.Service) {
+	l := logger.Logger.With(slog.String("component", "daemon"))
+	l.Info("daemon started")
+
+	go lex.Run(ctx)
+
+	<-ctx.Done()
 }
