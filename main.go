@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/alex-muller/ankiai/internal/lib/db"
+	"github.com/alex-muller/ankiai/internal/lib/logger"
 	"github.com/alex-muller/ankiai/internal/run"
 )
 
@@ -14,6 +15,8 @@ import (
 var embedMigrations embed.FS
 
 func main() {
+	logger.Setup(logger.EnvLocal)
+
 	if len(os.Args) < 2 {
 		printUsage()
 		os.Exit(1)
@@ -50,8 +53,9 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Println("Usage: ankiai <command> [arguments]")
-	fmt.Println("Commands:")
-	fmt.Println("  import <file>    Import words from a text file into the queue")
-	fmt.Println("  daemon           Start background processes (TG bot, workers, Anki)")
+	l := logger.Logger
+	l.Info("Usage: ankiai <command> [arguments]")
+	l.Info("Commands:")
+	l.Info("  import <file>    Import words from a text file into the queue")
+	l.Info("  daemon           Start background processes (TG bot, workers, Anki)")
 }
