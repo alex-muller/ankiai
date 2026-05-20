@@ -13,24 +13,28 @@ CREATE TABLE words
 CREATE TABLE anki_cards
 (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    request_id       INTEGER     NOT NULL,
+    word_id          INTEGER     NOT NULL,
     lemma            TEXT        NOT NULL,
     card_hash        TEXT UNIQUE NOT NULL,
     target_word_form TEXT        NOT NULL,
     marked_sentence  TEXT        NOT NULL,
     translation      TEXT        NOT NULL,
-    extra_context    TEXT,
-    audio_filename   TEXT,
-    audio_base64     TEXT,
-    status           INTEGER  DEFAULT 0,
-    error_log        TEXT,
-    created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (request_id) REFERENCES word_requests (id) ON DELETE CASCADE
+    grammar_note     TEXT        NOT NULL DEFAULT '',
+    synonyms         TEXT        NOT NULL DEFAULT '',
+    part_of_speech   TEXT        NOT NULL DEFAULT '',
+    definition_en    TEXT        NOT NULL DEFAULT '',
+    definition_ru    TEXT        NOT NULL DEFAULT '',
+    translation_ru   TEXT        NOT NULL DEFAULT '',
+    audio_filename   TEXT        NOT NULL DEFAULT '',
+    audio_base64     TEXT        NOT NULL DEFAULT '',
+    status           INTEGER              DEFAULT 0,
+    created_at       DATETIME             DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (word_id) REFERENCES words (id) ON DELETE CASCADE
 );
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
 DROP TABLE IF EXISTS anki_cards;
-DROP TABLE IF EXISTS word_requests;
+DROP TABLE IF EXISTS words;
 -- +goose StatementEnd

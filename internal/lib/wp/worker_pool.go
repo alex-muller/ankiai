@@ -48,7 +48,7 @@ func NewWorkerPool(workers int, tasksPerMinute int) *WorkerPool {
 
 // Start launches all workers
 func (wp *WorkerPool) Start() {
-	wp.logger.Info("starting worker pool",
+	wp.logger.Debug("starting worker pool",
 		slog.Int("workers", wp.workers),
 		slog.Float64("rate_limit_per_second", float64(wp.rateLimiter.Limit())))
 
@@ -63,16 +63,16 @@ func (wp *WorkerPool) worker(id int) {
 	defer wp.wg.Done()
 
 	workerLogger := wp.logger.With(slog.Int("worker_id", id))
-	workerLogger.Info("worker started")
+	workerLogger.Debug("worker started")
 
 	for {
 		select {
 		case <-wp.ctx.Done():
-			workerLogger.Info("worker stopping")
+			workerLogger.Debug("worker stopping")
 			return
 		case task, ok := <-wp.taskQueue:
 			if !ok {
-				workerLogger.Info("task queue closed, worker stopping")
+				workerLogger.Debug("task queue closed, worker stopping")
 				return
 			}
 
@@ -83,7 +83,7 @@ func (wp *WorkerPool) worker(id int) {
 			}
 
 			taskLogger := workerLogger.With(slog.Int("task_id", task.ID))
-			taskLogger.Info("processing task")
+			taskLogger.Debug("processing task")
 
 			startTime := time.Now()
 			if err := task.Process(wp.ctx, task.Payload); err != nil {
@@ -91,7 +91,7 @@ func (wp *WorkerPool) worker(id int) {
 					slog.String("error", err.Error()),
 					slog.Duration("duration", time.Since(startTime)))
 			} else {
-				taskLogger.Info("task completed successfully",
+				taskLogger.Debug("task completed successfully",
 					slog.Duration("duration", time.Since(startTime)))
 			}
 		}
@@ -110,7 +110,7 @@ func (wp *WorkerPool) Submit(task Task) error {
 
 // Stop gracefully shuts down the worker pool
 func (wp *WorkerPool) Stop() {
-	wp.logger.Info("stopping worker pool")
+	wp.logger.Debug("stopping worker pool")
 
 	// Close task queue to prevent new tasks
 	close(wp.taskQueue)
@@ -121,5 +121,5 @@ func (wp *WorkerPool) Stop() {
 	// Cancel context
 	wp.cancel()
 
-	wp.logger.Info("worker pool stopped")
+	wp.logger.Debug("worker pool stopped")
 }
