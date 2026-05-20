@@ -5,6 +5,7 @@ import "time"
 type AnkiCard struct {
 	ID             int       `db:"id"`
 	RequestID      int       `db:"request_id"`
+	Lemma          string    `db:"lemma"`
 	CardHash       string    `db:"card_hash"`
 	TargetWordForm string    `db:"target_word_form"`
 	MarkedSentence string    `db:"marked_sentence"`

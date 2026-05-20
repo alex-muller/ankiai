@@ -2,18 +2,19 @@
 -- +goose StatementBegin
 CREATE TABLE word_requests
 (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    target_word TEXT UNIQUE NOT NULL,
-    status      TEXT     DEFAULT 'pending',
-    raw_json    TEXT,
-    error_log   TEXT,
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    imported_word TEXT UNIQUE NOT NULL,
+    status        INTEGER  DEFAULT 0,
+    raw_json      TEXT,
+    error_log     TEXT,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE anki_cards
 (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     request_id       INTEGER     NOT NULL,
+    lemma            TEXT        NOT NULL,
     card_hash        TEXT UNIQUE NOT NULL,
     target_word_form TEXT        NOT NULL,
     marked_sentence  TEXT        NOT NULL,
@@ -21,7 +22,7 @@ CREATE TABLE anki_cards
     extra_context    TEXT,
     audio_filename   TEXT,
     audio_base64     TEXT,
-    status           TEXT     DEFAULT 'pending_tts',
+    status           INTEGER  DEFAULT 0,
     error_log        TEXT,
     created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (request_id) REFERENCES word_requests (id) ON DELETE CASCADE
