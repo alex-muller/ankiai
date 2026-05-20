@@ -2,16 +2,17 @@ package run
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
 	"strings"
 
 	"github.com/alex-muller/ankiai/internal/lib/logger"
-	"github.com/jmoiron/sqlx"
+	"github.com/alex-muller/ankiai/internal/module/word"
 )
 
-func RunImport(db *sqlx.DB, filePath string) error {
+func Import(ctx context.Context, repository *word.Repository, filePath string) error {
 	// Attach context to all logs generated within this function
 	l := logger.Logger.With(
 		slog.String("component", "importer"),
@@ -33,14 +34,12 @@ func RunImport(db *sqlx.DB, filePath string) error {
 
 	l.Info("file parsed successfully", slog.Int("unique_words_count", len(words)))
 
-	// TODO: Pass the 'words' slice to the repository
-	// err = repository.InsertWords(words)
-	// if err != nil {
-	// 	l.Error("failed to save words to database", slog.String("error", err.Error()))
-	//  return
-	// }
+	added, err := repository.Add(ctx, words)
+	if err != nil {
+		return fmt.Errorf(`add words: %w`, err)
+	}
 
-	l.Info("import completed successfully")
+	l.Info("import completed successfully for words", slog.Int("unique_words_count", added))
 
 	return nil
 }

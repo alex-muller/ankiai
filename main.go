@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"log"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/alex-muller/ankiai/internal/lib/db"
 	"github.com/alex-muller/ankiai/internal/lib/logger"
+	"github.com/alex-muller/ankiai/internal/module/word"
 	"github.com/alex-muller/ankiai/internal/run"
 )
 
@@ -15,6 +17,8 @@ import (
 var embedMigrations embed.FS
 
 func main() {
+	ctx := context.Background()
+
 	logger.Setup(logger.EnvLocal)
 
 	if len(os.Args) < 2 {
@@ -29,6 +33,8 @@ func main() {
 	}
 	defer database.Close()
 
+	repository := word.NewRepository(database)
+
 	command := os.Args[1]
 
 	switch command {
@@ -38,11 +44,14 @@ func main() {
 			os.Exit(1)
 		}
 		// Запуск: ./ankiai import words.txt
-		run.RunImport(database, os.Args[2])
+		err = run.Import(ctx, repository, os.Args[2])
+		if err != nil {
+			log.Fatalf(`run import "%s"`, err)
+		}
 
 	case "daemon":
 		// Запуск: ./ankiai daemon
-		run.RunDaemon(database)
+		run.Daemon(database)
 
 	default:
 		fmt.Printf("Неизвестная команда: %s\n", command)

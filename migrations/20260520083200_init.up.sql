@@ -1,9 +1,9 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TABLE word_requests
+CREATE TABLE words
 (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    imported_word TEXT UNIQUE NOT NULL,
+    word TEXT UNIQUE NOT NULL,
     status        INTEGER  DEFAULT 0,
     raw_json      TEXT,
     error_log     TEXT,
