@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/alex-muller/ankiai/internal/lib/logger"
@@ -32,24 +33,36 @@ type Service struct {
 
 func (a Service) Run(ctx context.Context) {
 	ch := make(chan word.Word)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
 
 	go func() {
+		wg.Done()
 		for {
 			select {
 			case <-ctx.Done():
 				close(ch)
 				return
 			default:
+				a.log.Info(`try to get words`)
 				addedWords, err := a.repository.GetThousandByStatus(ctx, word.StatusNew)
 				if err != nil {
 					a.log.Error(`get words to process`, slog.String("error", err.Error()))
 					close(ch)
+					return
+				}
+
+				if len(addedWords) == 0 {
+					time.Sleep(1 * time.Minute)
+					continue
 				}
 
 				for _, addedWord := range addedWords {
+					wg.Add(1)
 					ch <- addedWord
 				}
-				time.Sleep(1 * time.Second)
+
+				wg.Wait()
 			}
 		}
 	}()
@@ -58,36 +71,36 @@ func (a Service) Run(ctx context.Context) {
 	pool := wp.NewWorkerPool(10, 100)
 	pool.Start()
 
-	go func() {
-		var i int
-		for word_ := range ch {
-			i++
-			taskID := i
-			task := wp.Task{
-				ID:      taskID,
-				Payload: word_,
-				Process: func(ctx context.Context, word_ any) error {
-					w, ok := word_.(word.Word)
-					if !ok {
-						return errors.New(`invalid word type`)
-					}
-					return a.processWord(ctx, w)
-				},
-			}
-
-			if err := pool.Submit(task); err != nil {
-				a.log.Error("failed to submit task",
-					slog.Int("task_id", taskID),
-					slog.String("error", err.Error()))
-			}
+	var i int
+	for word_ := range ch {
+		i++
+		taskID := i
+		task := wp.Task{
+			ID:      taskID,
+			Payload: word_,
+			Process: func(ctx context.Context, word_ any) error {
+				defer wg.Done()
+				w, ok := word_.(word.Word)
+				if !ok {
+					return errors.New(`invalid word type`)
+				}
+				return a.processWord(ctx, w)
+			},
 		}
 
-		a.log.Debug(`task finished`)
-	}()
+		if err := pool.Submit(task); err != nil {
+			a.log.Error("failed to submit task",
+				slog.Int("task_id", taskID),
+				slog.String("error", err.Error()))
+		}
+	}
+
+	a.log.Debug(`task finished`)
 }
 
 func (a Service) processWord(ctx context.Context, word_ word.Word) error {
 	l := a.log.With(`method`, `processWord`)
+	l.Info(`start process word ` + word_.Word)
 
 	// Parse prompt template
 	var requestData GeminiRequest

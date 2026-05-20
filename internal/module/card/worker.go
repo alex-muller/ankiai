@@ -3,11 +3,13 @@ package card
 import (
 	"context"
 	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alex-muller/ankiai/internal/lib/logger"
@@ -15,14 +17,16 @@ import (
 	"github.com/alex-muller/ankiai/internal/module/word"
 )
 
-func NewWorker(wordsRepo *word.Repository) *Worker {
+func NewWorker(wordsRepo *word.Repository, cardRepo *CardRepo) *Worker {
 	return &Worker{
+		cardRepo:  cardRepo,
 		wordsRepo: wordsRepo,
 		log:       logger.Logger.With(slog.String("component", "worker")),
 	}
 }
 
 type Worker struct {
+	cardRepo  *CardRepo
 	wordsRepo *word.Repository
 	log       *slog.Logger
 }
@@ -30,7 +34,11 @@ type Worker struct {
 func (a Worker) Run(ctx context.Context) {
 	ch := make(chan word.Word)
 
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
 	go func() {
+		wg.Done()
 		for {
 			select {
 			case <-ctx.Done():
@@ -43,10 +51,16 @@ func (a Worker) Run(ctx context.Context) {
 					close(ch)
 				}
 
+				if len(addedWords) == 0 {
+					time.Sleep(1 * time.Second)
+					continue
+				}
+
 				for _, addedWord := range addedWords {
+					wg.Add(1)
 					ch <- addedWord
 				}
-				time.Sleep(1 * time.Second)
+				wg.Wait()
 			}
 		}
 	}()
@@ -54,32 +68,31 @@ func (a Worker) Run(ctx context.Context) {
 	pool := wp.NewWorkerPool(10, 10000)
 	pool.Start()
 
-	go func() {
-		var i int
-		for word_ := range ch {
-			i++
-			taskID := i
-			task := wp.Task{
-				ID:      taskID,
-				Payload: word_,
-				Process: func(ctx context.Context, word_ any) error {
-					w, ok := word_.(word.Word)
-					if !ok {
-						return errors.New(`invalid word type`)
-					}
-					return a.processWord(ctx, w)
-				},
-			}
-
-			if err := pool.Submit(task); err != nil {
-				a.log.Error("failed to submit task",
-					slog.Int("task_id", taskID),
-					slog.String("error", err.Error()))
-			}
+	var i int
+	for word_ := range ch {
+		i++
+		taskID := i
+		task := wp.Task{
+			ID:      taskID,
+			Payload: word_,
+			Process: func(ctx context.Context, word_ any) error {
+				defer wg.Done()
+				w, ok := word_.(word.Word)
+				if !ok {
+					return errors.New(`invalid word type`)
+				}
+				return a.processWord(ctx, w)
+			},
 		}
 
-		a.log.Debug(`task finished`)
-	}()
+		if err := pool.Submit(task); err != nil {
+			a.log.Error("failed to submit task",
+				slog.Int("task_id", taskID),
+				slog.String("error", err.Error()))
+		}
+	}
+
+	a.log.Debug(`task finished`)
 }
 
 func (a Worker) processWord(ctx context.Context, word_ word.Word) error {
@@ -105,7 +118,17 @@ func (a Worker) processWord(ctx context.Context, word_ word.Word) error {
 		return nil
 	}
 
-	a.log.Info(`method`, slog.Any(`processWord`, word_))
+	err = a.processCardJson(ctx, cardJson, word_)
+	if err != nil {
+		return fmt.Errorf(`process card: %w`, err)
+	}
+
+	word_.Status = word.StatusCardsCreated
+	err = a.wordsRepo.Update(ctx, word_)
+	if err != nil {
+		return fmt.Errorf(`update word: %w`, err)
+	}
+
 	return nil
 }
 
@@ -116,14 +139,14 @@ func (a Worker) processCardJson(ctx context.Context, cardJson CardJson, word_ wo
 			sum := md5.Sum([]byte(example.MarkedSentence))
 			ankiCard := AnkiCard{
 				WordID:         word_.ID,
-				Lemma:          cardJson.Lemma,
-				CardHash:       string(sum[:]),
-				TargetWordForm: example.TargetWordForm,
+				Lemma:          strings.ToLower(cardJson.Lemma),
+				CardHash:       hex.EncodeToString(sum[:]),
+				TargetWordForm: strings.ToLower(example.TargetWordForm),
 				MarkedSentence: example.MarkedSentence,
 				Translation:    example.Translation,
 				GrammarNote:    example.GrammarNote,
 				Synonyms:       strings.Join(sens.Synonyms, ", "),
-				PartOfSpeech:   sens.PartOfSpeech,
+				PartOfSpeech:   strings.ToLower(sens.PartOfSpeech),
 				DefinitionEn:   sens.DefinitionEn,
 				DefinitionRu:   sens.DefinitionRu,
 				TranslationRu:  example.Translation,
@@ -132,8 +155,22 @@ func (a Worker) processCardJson(ctx context.Context, cardJson CardJson, word_ wo
 				Status:         0,
 				CreatedAt:      now,
 			}
+
+			err := a.cardRepo.Add(ctx, ankiCard)
+
+			a.log.Info(
+				`added card`,
+				slog.String(`lemma`, ankiCard.Lemma),
+				slog.String(`word`, ankiCard.TargetWordForm),
+			)
+
+			if err != nil {
+				return fmt.Errorf(`add card: %w`, err)
+			}
 		}
 	}
+
+	return nil
 }
 
 type GeminiResponse struct {

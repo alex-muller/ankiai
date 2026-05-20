@@ -25,5 +25,6 @@ type AnkiCard struct {
 	AudioFilename  string    `db:"audio_filename"`
 	AudioBase64    string    `db:"audio_base64"`
 	Status         Status    `db:"status"`
+	Frequency      float64   `db:"frequency"`
 	CreatedAt      time.Time `db:"created_at"`
 }

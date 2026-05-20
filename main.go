@@ -40,13 +40,14 @@ func main() {
 	defer database.Close()
 
 	// Repository
-	repository := word.NewRepository(database)
+	wordRepo := word.NewRepository(database)
+	cardRepo := card.NewCardRepo(database)
 
 	// Lexer
-	lex := lexicographer.New(repository, conf.GeminiApiKey)
+	lex := lexicographer.New(wordRepo, conf.GeminiApiKey)
 
 	// Cards worker
-	cardsWorker := card.NewWorker(repository)
+	cardsWorker := card.NewWorker(wordRepo, cardRepo)
 
 	command := os.Args[1]
 
@@ -57,7 +58,7 @@ func main() {
 			os.Exit(1)
 		}
 		// Запуск: ./ankiai import words.txt
-		err = run.Import(ctx, repository, os.Args[2])
+		err = run.Import(ctx, wordRepo, os.Args[2])
 		if err != nil {
 			log.Fatalf(`run import "%s"`, err)
 		}

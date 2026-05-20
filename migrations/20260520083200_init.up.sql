@@ -4,10 +4,10 @@ CREATE TABLE words
 (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     word       TEXT UNIQUE NOT NULL,
-    status     INTEGER  DEFAULT 0,
+    status     INTEGER              DEFAULT 0,
     raw_json   TEXT        NOT NULL DEFAULT '',
     error_log  TEXT        NOT NULL DEFAULT '',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME             DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE anki_cards
@@ -28,6 +28,7 @@ CREATE TABLE anki_cards
     audio_filename   TEXT        NOT NULL DEFAULT '',
     audio_base64     TEXT        NOT NULL DEFAULT '',
     status           INTEGER              DEFAULT 0,
+    frequency        REAL        NOT NULL DEFAULT 0,
     created_at       DATETIME             DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (word_id) REFERENCES words (id) ON DELETE CASCADE
 );
