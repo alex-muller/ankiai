@@ -1,13 +1,29 @@
 package config
 
-func Get() Config {
-	return Config{
-		DBPath:         `tmp/anki_vocabulary.db`,
-		MigrationsPath: `migrations`,
-	}
-}
+import (
+	"log"
+	"os"
 
+	"github.com/joho/godotenv"
+)
+
+// Config holds application configuration.
 type Config struct {
 	DBPath         string
 	MigrationsPath string
+	GeminiApiKey   string
+}
+
+// Get loads and returns the application configuration.
+func Get() Config {
+	// Загружаем .env файл
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: .env file not found or could not be loaded: %v", err)
+	}
+
+	return Config{
+		DBPath:         `tmp/anki_vocabulary.db`,
+		MigrationsPath: `migrations`,
+		GeminiApiKey:   os.Getenv("GEMINI_API_KEY"),
+	}
 }

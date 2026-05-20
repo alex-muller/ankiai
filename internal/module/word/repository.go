@@ -2,7 +2,6 @@ package word
 
 import (
 	"context"
-	"iter"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -34,29 +33,26 @@ func (a Repository) Add(ctx context.Context, words []string) (int, error) {
 	return int(n), err
 }
 
-func (a Repository) GetAdded(ctx context.Context) iter.Seq2[Word, error] {
-	return func(yield func(Word, error) bool) {
-		query := "SELECT * FROM words WHERE status = $1"
-		rows, err := a.db.QueryxContext(ctx, query, StatusAdded)
-		if err != nil {
-			yield(Word{}, err)
-			return
-		}
-		defer rows.Close()
+func (a Repository) Update(ctx context.Context, w Word) error {
+	query := `UPDATE words SET status = :status, raw_json = :raw_json, error_log = :error_log WHERE id = :id`
+	_, err := a.db.NamedExecContext(ctx, query, w)
+	return err
+}
 
-		for rows.Next() {
-			var w Word
-			if err := rows.StructScan(&w); err != nil {
-				yield(Word{}, err)
-				return
-			}
-			if !yield(w, nil) {
-				return
-			}
-		}
-
-		if err := rows.Err(); err != nil {
-			yield(Word{}, err)
-		}
+func (a Repository) GetAdded(ctx context.Context) ([]Word, error) {
+	query := "SELECT * FROM words WHERE status = $1 LIMIT 1000"
+	rows, err := a.db.QueryxContext(ctx, query, StatusAdded)
+	if err != nil {
+		return nil, err
 	}
+	defer rows.Close()
+	var words []Word
+	for rows.Next() {
+		var word Word
+		if err := rows.StructScan(&word); err != nil {
+			return nil, err
+		}
+		words = append(words, word)
+	}
+	return words, nil
 }

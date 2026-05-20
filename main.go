@@ -42,7 +42,7 @@ func main() {
 	repository := word.NewRepository(database)
 
 	// Lexer
-	lex := lexicographer.New(repository)
+	lex := lexicographer.New(repository, conf.GeminiApiKey)
 
 	command := os.Args[1]
 
