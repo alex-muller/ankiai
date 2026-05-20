@@ -40,7 +40,7 @@ func (a Service) Run(ctx context.Context) {
 				close(ch)
 				return
 			default:
-				addedWords, err := a.repository.GetAdded(ctx)
+				addedWords, err := a.repository.GetThousandByStatus(ctx, word.StatusNew)
 				if err != nil {
 					a.log.Error(`get words to process`, slog.String("error", err.Error()))
 					close(ch)
@@ -58,7 +58,6 @@ func (a Service) Run(ctx context.Context) {
 	pool := wp.NewWorkerPool(10, 100)
 	pool.Start()
 
-	// Example: Submit some test tasks
 	go func() {
 		var i int
 		for word_ := range ch {
@@ -140,7 +139,7 @@ func (a Service) processWord(ctx context.Context, word_ word.Word) error {
 		word_.ErrorLog = string(body)
 	}
 
-	word_.Status = word.StatusProcessed
+	word_.Status = word.StatusRaw
 
 	err = a.repository.Update(ctx, word_)
 	if err != nil {

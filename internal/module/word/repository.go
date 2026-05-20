@@ -39,9 +39,9 @@ func (a Repository) Update(ctx context.Context, w Word) error {
 	return err
 }
 
-func (a Repository) GetAdded(ctx context.Context) ([]Word, error) {
-	query := "SELECT * FROM words WHERE status = $1 LIMIT 1000"
-	rows, err := a.db.QueryxContext(ctx, query, StatusAdded)
+func (a Repository) GetThousandByStatus(ctx context.Context, status Status) ([]Word, error) {
+	query := "SELECT * FROM words WHERE status = $1 ORDER BY id ASC LIMIT 1000"
+	rows, err := a.db.QueryxContext(ctx, query, status)
 	if err != nil {
 		return nil, err
 	}

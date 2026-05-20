@@ -10,6 +10,7 @@ import (
 	"github.com/alex-muller/ankiai/internal/config"
 	"github.com/alex-muller/ankiai/internal/lib/db"
 	"github.com/alex-muller/ankiai/internal/lib/logger"
+	"github.com/alex-muller/ankiai/internal/module/card"
 	"github.com/alex-muller/ankiai/internal/module/lexicographer"
 	"github.com/alex-muller/ankiai/internal/module/word"
 	"github.com/alex-muller/ankiai/internal/run"
@@ -44,6 +45,9 @@ func main() {
 	// Lexer
 	lex := lexicographer.New(repository, conf.GeminiApiKey)
 
+	// Cards worker
+	cardsWorker := card.NewWorker(repository)
+
 	command := os.Args[1]
 
 	switch command {
@@ -60,7 +64,7 @@ func main() {
 
 	case "daemon":
 		// Запуск: ./ankiai daemon
-		run.Daemon(ctx, lex)
+		run.Daemon(ctx, lex, cardsWorker)
 
 	default:
 		fmt.Printf("Неизвестная команда: %s\n", command)

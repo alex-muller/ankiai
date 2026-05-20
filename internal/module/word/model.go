@@ -5,8 +5,9 @@ import "time"
 type Status int
 
 const (
-	StatusAdded     Status = 0
-	StatusProcessed Status = 1
+	StatusNew          Status = 0
+	StatusRaw          Status = 1
+	StatusCardsCreated Status = 2
 )
 
 type Word struct {
