@@ -51,7 +51,7 @@ func main() {
 	cardsWorker := card.NewWorker(wordRepo, cardRepo)
 
 	// Exporter
-	exporter := export.NewExporter()
+	exporter := export.NewExporter(conf)
 
 	command := os.Args[1]
 

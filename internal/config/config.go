@@ -27,5 +27,7 @@ func Get() Config {
 		DBPath:         `tmp/anki_vocabulary.db`,
 		MigrationsPath: `migrations`,
 		GeminiApiKey:   os.Getenv("GEMINI_API_KEY"),
+		AnkiConnectUrl: os.Getenv("ANKI_CONNECT_URL"),
+		AnkiDeck:       os.Getenv("ANKI_DECK_NAME"),
 	}
 }
