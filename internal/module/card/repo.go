@@ -2,6 +2,7 @@ package card
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -28,4 +29,15 @@ func (a CardRepo) Add(ctx context.Context, card AnkiCard) error {
 			:audio_filename, :audio_base64, :status
 		)`, card)
 	return err
+}
+
+func (a CardRepo) FindManyUniqueTargetWordsByStatus(ctx context.Context, status Status, limit int) ([]string, error) {
+	var out = make([]string, 0, limit)
+
+	err := a.db.SelectContext(ctx, &out, "SELECT DISTINCT target_word_form FROM anki_cards WHERE status = ? LIMIT ?", status, limit)
+	if err != nil {
+		return nil, fmt.Errorf(`query: %w`, err)
+	}
+
+	return out, err
 }
