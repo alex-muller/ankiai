@@ -11,6 +11,7 @@ import (
 	"github.com/alex-muller/ankiai/internal/lib/db"
 	"github.com/alex-muller/ankiai/internal/lib/logger"
 	"github.com/alex-muller/ankiai/internal/module/card"
+	"github.com/alex-muller/ankiai/internal/module/export"
 	"github.com/alex-muller/ankiai/internal/module/lexicographer"
 	"github.com/alex-muller/ankiai/internal/module/word"
 	"github.com/alex-muller/ankiai/internal/run"
@@ -49,6 +50,9 @@ func main() {
 	// Cards worker
 	cardsWorker := card.NewWorker(wordRepo, cardRepo)
 
+	// Exporter
+	exporter := export.NewExporter()
+
 	command := os.Args[1]
 
 	switch command {
@@ -66,6 +70,8 @@ func main() {
 	case "daemon":
 		// Запуск: ./ankiai daemon
 		run.Daemon(ctx, lex, cardsWorker)
+	case "export":
+		run.Export(ctx, exporter)
 
 	default:
 		fmt.Printf("Неизвестная команда: %s\n", command)
@@ -76,9 +82,10 @@ func main() {
 }
 
 func printUsage() {
-	l := logger.Logger
-	l.Info("Usage: ankiai <command> [arguments]")
-	l.Info("Commands:")
-	l.Info("  import <file>    Import words from a text file into the queue")
-	l.Info("  daemon           Start background processes (TG bot, workers, Anki)")
+
+	fmt.Println("Usage: ankiai <command> [arguments]")
+	fmt.Println("Commands:")
+	fmt.Println("  import <file>    Import words from a text file into the queue")
+	fmt.Println("  export           Exports words to Anki")
+	fmt.Println("  daemon           Start background processes (TG bot, workers, Anki)")
 }

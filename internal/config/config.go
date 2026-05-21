@@ -12,6 +12,8 @@ type Config struct {
 	DBPath         string
 	MigrationsPath string
 	GeminiApiKey   string
+	AnkiConnectUrl string
+	AnkiDeck       string
 }
 
 // Get loads and returns the application configuration.
