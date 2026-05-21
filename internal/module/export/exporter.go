@@ -40,6 +40,11 @@ func (a Exporter) checkAndCreateDeck(ctx context.Context) error {
 
 	fmt.Println(fmt.Sprintf("deck not found. creating new deck [%s]", a.conf.AnkiDeck))
 
+	err = a.createDeck(ctx, a.conf.AnkiDeck)
+	if err != nil {
+		return fmt.Errorf(`create deck: %w`, err)
+	}
+
 	return nil
 }
 
@@ -54,8 +59,32 @@ func (a Exporter) hasDeck(ctx context.Context, name string) (bool, error) {
 		return false, fmt.Errorf(`make request: %w`, err)
 	}
 
-	_, ok := resp.Result[name]
+	results := make(map[string]int)
+	err = json.Unmarshal(resp.Result, new(results))
+	if err != nil {
+		return false, fmt.Errorf(`unmarshal deck: %w`, err)
+	}
+
+	_, ok := results[name]
+
 	return ok, nil
+}
+
+func (a Exporter) createDeck(ctx context.Context, name string) error {
+	ankiRequest_ := ankiRequest{
+		Action:  "createDeck",
+		Version: 6,
+		Params: map[string]string{
+			"deck": name,
+		},
+	}
+
+	_, err := a.makeRequest(ctx, ankiRequest_)
+	if err != nil {
+		return fmt.Errorf(`make request: %w`, err)
+	}
+
+	return nil
 }
 
 func (a Exporter) makeRequest(ctx context.Context, request ankiRequest) (ankiResponse, error) {
@@ -89,9 +118,10 @@ func (a Exporter) makeRequest(ctx context.Context, request ankiRequest) (ankiRes
 type ankiRequest struct {
 	Action  string `json:"action"`
 	Version int    `json:"version"`
+	Params  any    `json:"params,omitempty"`
 }
 
 type ankiResponse struct {
-	Result map[string]int64 `json:"result"`
-	Error  interface{}      `json:"error"`
+	Result json.RawMessage `json:"result"`
+	Error  string          `json:"error"`
 }
