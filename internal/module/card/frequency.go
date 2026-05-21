@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/alex-muller/ankiai/internal/lib/logger"
 )
@@ -27,18 +28,27 @@ type frequency struct {
 }
 
 func (a *frequency) run(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			err := a.runOnce(ctx)
+			if err != nil {
+				a.log.Error(`process words failed`, slog.String("error", err.Error()))
+			}
+
+			time.Sleep(time.Second)
+		}
+	}
+}
+
+func (a *frequency) runOnce(ctx context.Context) error {
 	words, err := a.repo.FindManyUniqueTargetWordsByStatus(ctx, StatusCreated, 10)
 	if err != nil {
 		a.log.Error(`find cards by status "created" failed`, slog.String("error", err.Error()))
 	}
 
-	err = a.processWords(ctx, words)
-	if err != nil {
-		a.log.Error(`process words failed`, slog.String("error", err.Error()))
-	}
-}
-
-func (a *frequency) processWords(ctx context.Context, words []string) error {
 	if len(words) == 0 {
 		return nil
 	}
@@ -52,7 +62,10 @@ func (a *frequency) processWords(ctx context.Context, words []string) error {
 		return fmt.Errorf(`get averages: %w`, err)
 	}
 
-	_ = averages
+	err = a.repo.UpdateFrequencies(ctx, averages)
+	if err != nil {
+		return fmt.Errorf(`update frequencies: %w`, err)
+	}
 
 	return nil
 }
@@ -64,8 +77,8 @@ func (a *frequency) makeRequest(ctx context.Context, words []string, fromYear, t
 	baseURL := "https://books.google.com/ngrams/graph"
 	params := url.Values{}
 	params.Add("content", strings.Join(words, ","))
-	params.Add("year_start", "2000")
-	params.Add("year_end", "2022")
+	params.Add("year_start", fmt.Sprintf("%d", fromYear))
+	params.Add("year_end", fmt.Sprintf("%d", toYear))
 	params.Add("corpus", "en")
 
 	fullURL := baseURL + "?" + params.Encode()

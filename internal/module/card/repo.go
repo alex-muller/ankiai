@@ -41,3 +41,24 @@ func (a CardRepo) FindManyUniqueTargetWordsByStatus(ctx context.Context, status 
 
 	return out, err
 }
+
+func (a CardRepo) UpdateFrequencies(ctx context.Context, words map[string]float64) error {
+	if len(words) == 0 {
+		return nil
+	}
+
+	const query = `
+		UPDATE anki_cards
+		SET frequency = ?, status = ?
+		WHERE target_word_form = ?
+	`
+
+	for word, freq := range words {
+		_, err := a.db.ExecContext(ctx, query, freq, StatusFrequencyAdded, word)
+		if err != nil {
+			return fmt.Errorf(`update frequency for "%s": %w`, word, err)
+		}
+	}
+
+	return nil
+}
