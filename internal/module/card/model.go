@@ -5,7 +5,8 @@ import "time"
 type Status int
 
 const (
-	StatusCreated Status = 0
+	StatusCreated        Status = 0
+	StatusFrequencyAdded Status = 1
 )
 
 type AnkiCard struct {

@@ -27,11 +27,15 @@ CREATE TABLE anki_cards
     translation_ru   TEXT        NOT NULL DEFAULT '',
     audio_filename   TEXT        NOT NULL DEFAULT '',
     audio_base64     TEXT        NOT NULL DEFAULT '',
-    status           INTEGER              DEFAULT 0,
+    status           INTEGER     NOT NULL DEFAULT 0,
     frequency        REAL        NOT NULL DEFAULT 0,
     created_at       DATETIME             DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (word_id) REFERENCES words (id) ON DELETE CASCADE
 );
+
+create index anki_cards_status_target_word_form_index
+    on anki_cards (status, target_word_form);
+
 -- +goose StatementEnd
 
 -- +goose Down
