@@ -54,7 +54,7 @@ func main() {
 	ttsWorker := notes.NewTtsWorker(conf, notesRepo)
 
 	// Exporter
-	exporter := export.NewExporter(conf)
+	exporter := export.NewExporter(conf, notesRepo)
 
 	command := os.Args[1]
 

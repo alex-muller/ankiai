@@ -7,18 +7,25 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
+	"strconv"
 
 	"github.com/alex-muller/ankiai/internal/config"
+	"github.com/alex-muller/ankiai/internal/module/notes"
 )
 
-func NewExporter(conf config.Config) *Exporter {
+func NewExporter(conf config.Config, notesRepo *notes.Repo) *Exporter {
 	return &Exporter{
-		conf: conf,
+		conf:       conf,
+		clozeRegex: regexp.MustCompile(`\*\*(.*?)\*\*`),
+		notesRepo:  notesRepo,
 	}
 }
 
 type Exporter struct {
-	conf config.Config
+	conf       config.Config
+	notesRepo  *notes.Repo
+	clozeRegex *regexp.Regexp
 }
 
 func (a Exporter) Run(ctx context.Context) error {
@@ -32,7 +39,99 @@ func (a Exporter) Run(ctx context.Context) error {
 		return fmt.Errorf(`check and create model: %w`, err)
 	}
 
-	return err
+	err = a.runExportCards(ctx)
+	if err != nil {
+		return fmt.Errorf(`run export cards: %w`, err)
+	}
+
+	return nil
+}
+
+func (a Exporter) runExportCards(ctx context.Context) error {
+	notes, err := a.notesRepo.GetManyByStatus(ctx, notes.ExportPending, 0)
+	if err != nil {
+		return fmt.Errorf(`get notes: %w`, err)
+	}
+
+	for _, note := range notes {
+		err = a.processOneNote(ctx, note)
+	}
+
+	return nil
+}
+
+func (a Exporter) processOneNote(ctx context.Context, note notes.Note) error {
+	err := a.exportNote(ctx, note)
+	if err != nil {
+		return fmt.Errorf(`export note: %w`, err)
+	}
+
+	err = a.notesRepo.UpdateStatus(ctx, note.ID, notes.Exported)
+	if err != nil {
+		return fmt.Errorf(`update status of note: %w`, err)
+	}
+
+	return nil
+}
+
+func (a Exporter) exportNote(ctx context.Context, note notes.Note) error {
+
+	transformedSentence := a.clozeRegex.ReplaceAllString(note.MarkedSentence, "{{c1::$1}}")
+
+	finalSentence := transformedSentence + "{{c2::}}"
+
+	ankiRequest_ := ankiRequest{
+		Action:  "addNote",
+		Version: 6,
+		Params: ParamNote{
+			Note: Note{
+				DeckName:  a.conf.AnkiDeck,
+				ModelName: a.conf.AnkiModel,
+				Fields: Fields{
+					Id:             fmt.Sprintf(`%d`, note.ID),
+					Lemma:          note.Lemma,
+					TargetWordForm: note.TargetWordForm,
+					MarkedSentence: finalSentence,
+					Translation:    note.Translation,
+					GrammarNote:    note.GrammarNote,
+					Synonyms:       note.Synonyms,
+					PartOfSpeech:   note.PartOfSpeech,
+					DefinitionEn:   note.DefinitionEn,
+					DefinitionRu:   note.DefinitionRu,
+					TranslationRu:  note.TranslationRu,
+					Audio:          ``,
+					Frequency:      strconv.FormatFloat(note.Frequency, 'f', -1, 64),
+				},
+				Options: Options{
+					AllowDuplicate: false,
+					DuplicateScope: "",
+					DuplicateScopeOptions: DuplicateScopeOptions{
+						DeckName:       "",
+						CheckChildren:  false,
+						CheckAllModels: false,
+					},
+				},
+				Tags: nil,
+				Audio: []Audio{
+					{
+						Data:     note.AudioBase64,
+						Filename: note.AudioFilename,
+						SkipHash: "",
+						Fields:   []string{"audio"},
+					},
+				},
+			},
+		},
+	}
+
+	response, err := a.makeRequest(ctx, ankiRequest_)
+	if err != nil {
+		return fmt.Errorf(`make request: %w`, err)
+	}
+
+	_ = response
+
+	return nil
 }
 
 func (a Exporter) checkAndCreateModel(ctx context.Context) error {
@@ -164,7 +263,11 @@ func (a Exporter) createModel(ctx context.Context) error {
 
 {{#c2}}
 <div class="listening-reveal-mode">
-	<div class="sentence-box">{{cloze:marked_sentence}}</div>
+	<div style="display:none;">{{cloze:marked_sentence}}</div>
+	
+	<div id="raw-text" style="display:none;">{{marked_sentence}}</div>
+	
+	<div class="sentence-box" id="fixed-sentence"></div>
 </div>
 <hr id=answer>
 <h3>{{definition_en}}</h3>
@@ -172,6 +275,16 @@ func (a Exporter) createModel(ctx context.Context) error {
 	<div class="word-translation"><b>{{lemma}}</b> — {{translation_ru}}</div>
 	<div style="margin-top: 8px;">{{translation}}</div>
 </div>
+
+<script>
+    var raw = document.getElementById("raw-text").innerHTML;
+
+    raw = raw.replace(/\{\{c2::\}\}/g, "");
+    
+    raw = raw.replace(/\{\{c1::(.*?)\}\}/g, "<span class='cloze'>$1</span>");
+ 
+    document.getElementById("fixed-sentence").innerHTML = raw;
+</script>
 {{/c2}}
 `
 

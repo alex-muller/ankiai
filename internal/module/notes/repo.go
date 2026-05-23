@@ -43,7 +43,12 @@ func (a Repo) FindManyUniqueTargetWordsByStatus(ctx context.Context, status Stat
 }
 
 func (a Repo) GetManyByStatus(ctx context.Context, status Status, limit int) ([]Note, error) {
-	query := fmt.Sprintf("SELECT * FROM notes WHERE status = $1 ORDER BY id ASC LIMIT %d", limit)
+	var limitStr = ``
+	if limit > 0 {
+		limitStr = ` LIMIT ` + limitStr
+	}
+
+	query := fmt.Sprintf("SELECT * FROM notes WHERE status = $1 ORDER BY id ASC%s", limitStr)
 	rows, err := a.db.QueryxContext(ctx, query, status)
 	if err != nil {
 		return nil, err
@@ -72,7 +77,7 @@ func (a Repo) UpdateFrequencies(ctx context.Context, words map[string]float64) e
 	`
 
 	for word, freq := range words {
-		_, err := a.db.ExecContext(ctx, query, freq, StatusFrequencyAdded, word)
+		_, err := a.db.ExecContext(ctx, query, freq, GenerateAudioPending, word)
 		if err != nil {
 			return fmt.Errorf(`update frequency for "%s": %w`, word, err)
 		}
@@ -84,6 +89,12 @@ func (a Repo) UpdateFrequencies(ctx context.Context, words map[string]float64) e
 func (a Repo) AddAudio(ctx context.Context, noteId int64, audioContent, audioFilename string) error {
 	q := "UPDATE notes SET audio_filename = ?, audio_base64 = ?, status = ? WHERE id = ?"
 
-	_, err := a.db.ExecContext(ctx, q, audioFilename, audioContent, StatusAudioAdded, noteId)
+	_, err := a.db.ExecContext(ctx, q, audioFilename, audioContent, ExportPending, noteId)
+	return err
+}
+
+func (a Repo) UpdateStatus(ctx context.Context, noteId int64, status Status) error {
+	q := "UPDATE notes SET status = ? WHERE id = ?"
+	_, err := a.db.ExecContext(ctx, q, status, noteId)
 	return err
 }

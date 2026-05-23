@@ -44,7 +44,7 @@ func (a *frequency) run(ctx context.Context) {
 }
 
 func (a *frequency) runOnce(ctx context.Context) error {
-	words, err := a.repo.FindManyUniqueTargetWordsByStatus(ctx, StatusCreated, 10)
+	words, err := a.repo.FindManyUniqueTargetWordsByStatus(ctx, FrequencyPending, 10)
 	if err != nil {
 		a.log.Error(`find cards by status "created" failed`, slog.String("error", err.Error()))
 	}
