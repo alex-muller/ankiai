@@ -81,7 +81,7 @@ func (a Repo) UpdateFrequencies(ctx context.Context, words map[string]float64) e
 	return nil
 }
 
-func (a Repo) AddAudio(ctx context.Context, noteId int64, audioFilename, audioContent string) error {
+func (a Repo) AddAudio(ctx context.Context, noteId int64, audioContent, audioFilename string) error {
 	q := "UPDATE notes SET audio_filename = ?, audio_base64 = ?, status = ? WHERE id = ?"
 
 	_, err := a.db.ExecContext(ctx, q, audioFilename, audioContent, StatusAudioAdded, noteId)

@@ -42,13 +42,16 @@ func main() {
 
 	// Repository
 	wordRepo := word.NewRepository(database)
-	cardRepo := notes.NewRepo(database)
+	notesRepo := notes.NewRepo(database)
 
 	// Lexer
 	lex := lexicographer.New(wordRepo, conf.GeminiApiKey)
 
 	// Cards worker
-	cardsWorker := notes.NewWorker(wordRepo, cardRepo)
+	cardsWorker := notes.NewWorker(wordRepo, notesRepo)
+
+	// TTS worker
+	ttsWorker := notes.NewTtsWorker(conf, notesRepo)
 
 	// Exporter
 	exporter := export.NewExporter(conf)
@@ -69,7 +72,7 @@ func main() {
 
 	case "daemon":
 		// Запуск: ./ankiai daemon
-		run.Daemon(ctx, lex, cardsWorker)
+		run.Daemon(ctx, lex, cardsWorker, ttsWorker)
 	case "export":
 		run.Export(ctx, exporter)
 

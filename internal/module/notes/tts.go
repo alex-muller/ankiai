@@ -6,38 +6,52 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/alex-muller/ankiai/internal/config"
+	"github.com/alex-muller/ankiai/internal/lib/logger"
 )
 
 func NewTtsWorker(conf config.Config, repo *Repo) *Tts {
 	return &Tts{
 		ttsApiKey: conf.TtsApiKey,
 		repo:      repo,
+		log:       logger.Logger.With(slog.String("component", "tts")),
 	}
 }
 
 type Tts struct {
 	ttsApiKey string
 	repo      *Repo
+	log       *slog.Logger
 }
 
-func (a Tts) Run() {
-
+func (a Tts) Run(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			a.runOnce(ctx)
+			time.Sleep(2100 * time.Millisecond)
+		}
+	}
 }
 
-func (a Tts) runOnce(ctx context.Context) error {
-	notes, err := a.repo.GetManyByStatus(ctx, StatusFrequencyAdded, 1)
+func (a Tts) runOnce(ctx context.Context) {
+	notes, err := a.repo.GetManyByStatus(ctx, StatusFrequencyAdded, 10)
 	if err != nil {
-		return fmt.Errorf(`get notes: %w`, err)
+		a.log.Error(`get notes`, slog.String(`error`, err.Error()))
 	}
 
 	ch := make(chan Note)
 
 	go func() {
+		defer close(ch)
 		for _, note := range notes {
 			select {
 			case <-ctx.Done():
@@ -50,22 +64,30 @@ func (a Tts) runOnce(ctx context.Context) error {
 
 	wg := &sync.WaitGroup{}
 
-	for i := 10; i > 0; i-- {
+	for i := 2; i > 0; i-- {
 		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			for {
 				select {
 				case <-ctx.Done():
 					return
-				case note := <-ch:
+				case note, ok := <-ch:
+					if !ok {
+						return
+					}
 					err_ := a.processOneNote(ctx, note)
 					if err_ != nil {
-						// TODO finish this
+						a.log.Error(`process one note`, slog.String(`error`, err_.Error()))
 					}
+					fmt.Println(fmt.Sprintf("got mp3 for note: %s", note.TargetWordForm))
+					time.Sleep(2100 * time.Millisecond)
 				}
 			}
 		}()
 	}
+
+	wg.Wait()
 }
 
 func (a Tts) processOneNote(ctx context.Context, note Note) error {
@@ -110,7 +132,7 @@ func (a Tts) getPhrase(ctx context.Context, phrase string) (string, error) {
 		return "", fmt.Errorf(`payload marshal to json: %w`, err)
 	}
 
-	url := ` https://texttospeech.googleapis.com/v1/text:synthesize?key=` + a.ttsApiKey
+	url := "https://texttospeech.googleapis.com/v1/text:synthesize?key=" + a.ttsApiKey
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonPayload))
 	if err != nil {
