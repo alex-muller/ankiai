@@ -12,6 +12,7 @@ type Config struct {
 	DBPath         string
 	MigrationsPath string
 	GeminiApiKey   string
+	TtsApiKey      string
 	AnkiConnectUrl string
 	AnkiDeck       string
 }
@@ -27,6 +28,7 @@ func Get() Config {
 		DBPath:         `tmp/anki_vocabulary.db`,
 		MigrationsPath: `migrations`,
 		GeminiApiKey:   os.Getenv("GEMINI_API_KEY"),
+		TtsApiKey:      os.Getenv("GOOGLE_TTS_API_KEY"),
 		AnkiConnectUrl: os.Getenv("ANKI_CONNECT_URL"),
 		AnkiDeck:       os.Getenv("ANKI_DECK_NAME"),
 	}
