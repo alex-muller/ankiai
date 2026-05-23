@@ -1,4 +1,4 @@
-package card
+package notes
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"github.com/alex-muller/ankiai/internal/lib/logger"
 )
 
-func newFrequency(repo *CardRepo) frequency {
+func newFrequency(repo *Repo) frequency {
 	return frequency{
 		log:  logger.Logger.With("component", "frequency"),
 		repo: repo,
@@ -24,7 +24,7 @@ func newFrequency(repo *CardRepo) frequency {
 
 type frequency struct {
 	log  *slog.Logger
-	repo *CardRepo
+	repo *Repo
 }
 
 func (a *frequency) run(ctx context.Context) {

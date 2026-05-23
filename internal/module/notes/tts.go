@@ -1,4 +1,4 @@
-package card
+package notes
 
 import (
 	"bytes"
@@ -8,22 +8,78 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/alex-muller/ankiai/internal/config"
 )
 
-func NewTtsWorker(conf config.Config) *Tts {
+func NewTtsWorker(conf config.Config, repo *Repo) *Tts {
 	return &Tts{
 		ttsApiKey: conf.TtsApiKey,
+		repo:      repo,
 	}
 }
 
 type Tts struct {
 	ttsApiKey string
+	repo      *Repo
 }
 
 func (a Tts) Run() {
 
+}
+
+func (a Tts) runOnce(ctx context.Context) error {
+	notes, err := a.repo.GetManyByStatus(ctx, StatusFrequencyAdded, 1)
+	if err != nil {
+		return fmt.Errorf(`get notes: %w`, err)
+	}
+
+	ch := make(chan Note)
+
+	go func() {
+		for _, note := range notes {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				ch <- note
+			}
+		}
+	}()
+
+	wg := &sync.WaitGroup{}
+
+	for i := 10; i > 0; i-- {
+		wg.Add(1)
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case note := <-ch:
+					err_ := a.processOneNote(ctx, note)
+					if err_ != nil {
+						// TODO finish this
+					}
+				}
+			}
+		}()
+	}
+}
+
+func (a Tts) processOneNote(ctx context.Context, note Note) error {
+	audio, err := a.getPhrase(ctx, note.MarkedSentence)
+	if err != nil {
+		return fmt.Errorf(`get phrase: %w`, err)
+	}
+
+	err = a.repo.AddAudio(ctx, note.ID, audio, note.CardHash+`.mp3`)
+	if err != nil {
+		return fmt.Errorf(`add audio: %w`, err)
+	}
+
+	return nil
 }
 
 func (a Tts) getPhrase(ctx context.Context, phrase string) (string, error) {

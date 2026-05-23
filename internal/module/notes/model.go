@@ -1,4 +1,4 @@
-package card
+package notes
 
 import "time"
 
@@ -7,10 +7,11 @@ type Status int
 const (
 	StatusCreated        Status = 0
 	StatusFrequencyAdded Status = 1
+	StatusAudioAdded     Status = 2
 )
 
-type AnkiCard struct {
-	ID             int       `db:"id"`
+type Note struct {
+	ID             int64     `db:"id"`
 	WordID         int       `db:"word_id"`
 	Lemma          string    `db:"lemma"`
 	CardHash       string    `db:"card_hash"`

@@ -10,7 +10,7 @@ CREATE TABLE words
     created_at DATETIME             DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE anki_cards
+CREATE TABLE notes
 (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     word_id          INTEGER     NOT NULL,
@@ -33,13 +33,13 @@ CREATE TABLE anki_cards
     FOREIGN KEY (word_id) REFERENCES words (id) ON DELETE CASCADE
 );
 
-create index anki_cards_status_target_word_form_index
-    on anki_cards (status, target_word_form);
+create index notes_status_target_word_form_index
+    on notes (status, target_word_form);
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS anki_cards;
+DROP TABLE IF EXISTS notes;
 DROP TABLE IF EXISTS words;
 -- +goose StatementEnd

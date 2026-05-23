@@ -1,4 +1,4 @@
-package card
+package notes
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"github.com/alex-muller/ankiai/internal/module/word"
 )
 
-func NewWorker(wordsRepo *word.Repository, cardRepo *CardRepo) *Worker {
+func NewWorker(wordsRepo *word.Repository, cardRepo *Repo) *Worker {
 	return &Worker{
 		cardMaker: newMaker(cardRepo, wordsRepo),
 		frequency: newFrequency(cardRepo),

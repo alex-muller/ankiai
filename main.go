@@ -10,9 +10,9 @@ import (
 	"github.com/alex-muller/ankiai/internal/config"
 	"github.com/alex-muller/ankiai/internal/lib/db"
 	"github.com/alex-muller/ankiai/internal/lib/logger"
-	"github.com/alex-muller/ankiai/internal/module/card"
 	"github.com/alex-muller/ankiai/internal/module/export"
 	"github.com/alex-muller/ankiai/internal/module/lexicographer"
+	"github.com/alex-muller/ankiai/internal/module/notes"
 	"github.com/alex-muller/ankiai/internal/module/word"
 	"github.com/alex-muller/ankiai/internal/run"
 )
@@ -42,13 +42,13 @@ func main() {
 
 	// Repository
 	wordRepo := word.NewRepository(database)
-	cardRepo := card.NewCardRepo(database)
+	cardRepo := notes.NewRepo(database)
 
 	// Lexer
 	lex := lexicographer.New(wordRepo, conf.GeminiApiKey)
 
 	// Cards worker
-	cardsWorker := card.NewWorker(wordRepo, cardRepo)
+	cardsWorker := notes.NewWorker(wordRepo, cardRepo)
 
 	// Exporter
 	exporter := export.NewExporter(conf)

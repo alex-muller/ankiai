@@ -1,4 +1,4 @@
-package card
+package notes
 
 import (
 	"context"
@@ -18,7 +18,7 @@ import (
 )
 
 func newMaker(
-	cardRepo *CardRepo,
+	cardRepo *Repo,
 	wordsRepo *word.Repository,
 ) *maker {
 	return &maker{
@@ -29,7 +29,7 @@ func newMaker(
 }
 
 type maker struct {
-	cardRepo  *CardRepo
+	cardRepo  *Repo
 	wordsRepo *word.Repository
 	log       *slog.Logger
 }
@@ -140,7 +140,7 @@ func (a maker) processCardJson(ctx context.Context, cardJson CardJson, word_ wor
 	for _, sens := range cardJson.Senses {
 		for _, example := range sens.Examples {
 			sum := md5.Sum([]byte(example.MarkedSentence))
-			ankiCard := AnkiCard{
+			ankiCard := Note{
 				WordID:         word_.ID,
 				Lemma:          strings.ToLower(cardJson.Lemma),
 				CardHash:       hex.EncodeToString(sum[:]),
