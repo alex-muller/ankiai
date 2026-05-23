@@ -44,7 +44,8 @@ func (a Tts) Run(ctx context.Context) {
 
 func (a Tts) runOnce(ctx context.Context) {
 	ch := make(chan Note)
-	defer close(ch)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	wg := &sync.WaitGroup{}
 
@@ -64,7 +65,7 @@ func (a Tts) runOnce(ctx context.Context) {
 					if err_ != nil {
 						a.log.Error(`process one note`, slog.String(`error`, err_.Error()))
 					}
-					fmt.Println(fmt.Sprintf("got mp3 for note: %s", note.TargetWordForm))
+					fmt.Println(fmt.Sprintf("got mp3 for note: %s - %s", note.TargetWordForm, note.CardHash))
 					time.Sleep(2100 * time.Millisecond)
 				}
 			}
@@ -85,6 +86,8 @@ func (a Tts) runOnce(ctx context.Context) {
 			ch <- note
 		}
 	}
+
+	close(ch)
 
 	wg.Wait()
 }

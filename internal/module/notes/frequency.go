@@ -72,6 +72,8 @@ func (a *frequency) runOnce(ctx context.Context) error {
 		return fmt.Errorf(`update frequencies: %w`, err)
 	}
 
+	fmt.Println(fmt.Sprintf("Calculated Ngram Averages: %v", words))
+
 	return nil
 }
 
@@ -157,7 +159,6 @@ func (a *frequency) getAverages(rawHtml string) (map[string]float64, error) {
 	// 4. Output results
 	out := make(map[string]float64)
 
-	fmt.Println("Calculated Ngram Averages:")
 	for word, avg := range averages {
 		out[word] = avg
 	}

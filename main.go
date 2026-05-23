@@ -69,7 +69,8 @@ func main() {
 		if err != nil {
 			log.Fatalf(`run import "%s"`, err)
 		}
-
+	case "examples":
+		run.Examples(ctx, lex)
 	case "daemon":
 		// Запуск: ./ankiai daemon
 		run.Daemon(ctx, lex, cardsWorker, ttsWorker)

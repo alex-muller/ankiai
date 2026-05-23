@@ -48,7 +48,7 @@ func (a maker) run(ctx context.Context) {
 				close(ch)
 				return
 			default:
-				addedWords, err := a.wordsRepo.GetThousandByStatus(ctx, word.StatusRaw)
+				addedWords, err := a.wordsRepo.GetByStatus(ctx, word.StatusRaw)
 				if err != nil {
 					a.log.Error(`get words to process`, slog.String("error", err.Error()))
 					close(ch)
@@ -144,7 +144,7 @@ func (a maker) processCardJson(ctx context.Context, cardJson CardJson, word_ wor
 				WordID:         word_.ID,
 				Lemma:          strings.ToLower(cardJson.Lemma),
 				CardHash:       hex.EncodeToString(sum[:]),
-				TargetWordForm: strings.ToLower(example.TargetWordForm),
+				TargetWordForm: a.cleanWord(example.TargetWordForm),
 				MarkedSentence: example.MarkedSentence,
 				Translation:    example.Translation,
 				GrammarNote:    example.GrammarNote,
@@ -174,6 +174,23 @@ func (a maker) processCardJson(ctx context.Context, cardJson CardJson, word_ wor
 	}
 
 	return nil
+}
+
+func (a maker) cleanWord(text string) string {
+	text = strings.ToLower(text)
+	suffixes := []string{"'s", "’s", "'", "’"}
+	words := strings.Fields(text)
+
+	for i, word := range words {
+		for _, suffix := range suffixes {
+			if strings.HasSuffix(word, suffix) {
+				words[i] = strings.TrimSuffix(word, suffix)
+				break
+			}
+		}
+	}
+
+	return strings.Join(words, " ")
 }
 
 type GeminiResponse struct {

@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/alex-muller/ankiai/internal/lib/logger"
@@ -29,14 +30,24 @@ type Service struct {
 	repository *word.Repository
 	log        *slog.Logger
 	apiKey     string
+	counter    atomic.Int64
 }
 
-func (a Service) Run(ctx context.Context) {
+func (a *Service) RunDaemon(ctx context.Context) {
+	a.run(ctx, true)
+}
+
+func (a *Service) RunOnce(ctx context.Context) {
+	a.run(ctx, false)
+}
+
+func (a *Service) run(ctx context.Context, asDaemon bool) {
 	ch := make(chan word.Word)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
 	go func() {
+		defer close(ch)
 		wg.Done()
 		for {
 			select {
@@ -45,7 +56,7 @@ func (a Service) Run(ctx context.Context) {
 				return
 			default:
 				a.log.Info(`try to get words`)
-				addedWords, err := a.repository.GetThousandByStatus(ctx, word.StatusNew)
+				addedWords, err := a.repository.GetByStatus(ctx, word.StatusNew)
 				if err != nil {
 					a.log.Error(`get words to process`, slog.String("error", err.Error()))
 					close(ch)
@@ -53,8 +64,11 @@ func (a Service) Run(ctx context.Context) {
 				}
 
 				if len(addedWords) == 0 {
-					time.Sleep(1 * time.Minute)
-					continue
+					if asDaemon {
+						time.Sleep(1 * time.Minute)
+						continue
+					}
+					return
 				}
 
 				for _, addedWord := range addedWords {
@@ -68,7 +82,7 @@ func (a Service) Run(ctx context.Context) {
 	}()
 
 	// Create worker pool: 5 workers, max 60 tasks per minute (1 task per second average)
-	pool := wp.NewWorkerPool(2, 60)
+	pool := wp.NewWorkerPool(4, 100)
 	pool.Start()
 
 	var i int
@@ -98,7 +112,7 @@ func (a Service) Run(ctx context.Context) {
 	a.log.Debug(`task finished`)
 }
 
-func (a Service) processWord(ctx context.Context, word_ word.Word) error {
+func (a *Service) processWord(ctx context.Context, word_ word.Word) error {
 	l := a.log.With(`method`, `processWord`)
 	l.Info(`start process word ` + word_.Word)
 
@@ -158,6 +172,10 @@ func (a Service) processWord(ctx context.Context, word_ word.Word) error {
 	if err != nil {
 		return fmt.Errorf(`update: %w`, err)
 	}
+
+	a.counter.Add(1)
+
+	fmt.Println(fmt.Sprintf("[example generator] processed word: %s, total processed: %d", word_.Word, a.counter.Load()))
 
 	return nil
 }
