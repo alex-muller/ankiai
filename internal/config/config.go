@@ -15,6 +15,7 @@ type Config struct {
 	TtsApiKey      string
 	AnkiConnectUrl string
 	AnkiDeck       string
+	AnkiModel      string
 }
 
 // Get loads and returns the application configuration.
@@ -31,5 +32,6 @@ func Get() Config {
 		TtsApiKey:      os.Getenv("GOOGLE_TTS_API_KEY"),
 		AnkiConnectUrl: os.Getenv("ANKI_CONNECT_URL"),
 		AnkiDeck:       os.Getenv("ANKI_DECK_NAME"),
+		AnkiModel:      os.Getenv("ANKI_MODEL_NAME"),
 	}
 }
