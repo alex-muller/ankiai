@@ -47,6 +47,7 @@ func (a *frequency) runOnce(ctx context.Context) error {
 	words, err := a.repo.FindManyUniqueTargetWordsByStatus(ctx, FrequencyPending, 10)
 	if err != nil {
 		a.log.Error(`find cards by status "created" failed`, slog.String("error", err.Error()))
+		return err
 	}
 
 	if len(words) == 0 {
@@ -60,6 +61,10 @@ func (a *frequency) runOnce(ctx context.Context) error {
 	averages, err := a.getAverages(rawHtml)
 	if err != nil {
 		return fmt.Errorf(`get averages: %w`, err)
+	}
+
+	if len(averages) == 0 {
+		return fmt.Errorf(`can't calculate averages`)
 	}
 
 	err = a.repo.UpdateFrequencies(ctx, averages)

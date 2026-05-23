@@ -45,10 +45,10 @@ func (a Repo) FindManyUniqueTargetWordsByStatus(ctx context.Context, status Stat
 func (a Repo) GetManyByStatus(ctx context.Context, status Status, limit int) ([]Note, error) {
 	var limitStr = ``
 	if limit > 0 {
-		limitStr = ` LIMIT ` + limitStr
+		limitStr = fmt.Sprintf(` LIMIT %d`, limit)
 	}
 
-	query := fmt.Sprintf("SELECT * FROM notes WHERE status = $1 ORDER BY id ASC%s", limitStr)
+	query := fmt.Sprintf("SELECT * FROM notes WHERE status = $1 ORDER BY frequency DESC%s", limitStr)
 	rows, err := a.db.QueryxContext(ctx, query, status)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func (a Repo) GetManyByStatus(ctx context.Context, status Status, limit int) ([]
 	for rows.Next() {
 		var word Note
 		if err := rows.StructScan(&word); err != nil {
-			return nil, err
+			return nil, fmt.Errorf(`scan: %w`, err)
 		}
 		notes = append(notes, word)
 	}

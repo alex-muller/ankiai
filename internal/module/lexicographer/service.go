@@ -68,7 +68,7 @@ func (a Service) Run(ctx context.Context) {
 	}()
 
 	// Create worker pool: 5 workers, max 60 tasks per minute (1 task per second average)
-	pool := wp.NewWorkerPool(10, 100)
+	pool := wp.NewWorkerPool(2, 60)
 	pool.Start()
 
 	var i int

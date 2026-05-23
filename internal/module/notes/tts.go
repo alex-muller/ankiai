@@ -43,24 +43,8 @@ func (a Tts) Run(ctx context.Context) {
 }
 
 func (a Tts) runOnce(ctx context.Context) {
-	notes, err := a.repo.GetManyByStatus(ctx, GenerateAudioPending, 10)
-	if err != nil {
-		a.log.Error(`get notes`, slog.String(`error`, err.Error()))
-	}
-
 	ch := make(chan Note)
-
-	go func() {
-		defer close(ch)
-		for _, note := range notes {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				ch <- note
-			}
-		}
-	}()
+	defer close(ch)
 
 	wg := &sync.WaitGroup{}
 
@@ -85,6 +69,21 @@ func (a Tts) runOnce(ctx context.Context) {
 				}
 			}
 		}()
+	}
+
+	notes, err := a.repo.GetManyByStatus(ctx, GenerateAudioPending, 10)
+	if err != nil {
+		a.log.Error(`get notes`, slog.String(`error`, err.Error()))
+		return
+	}
+
+	for _, note := range notes {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			ch <- note
+		}
 	}
 
 	wg.Wait()
