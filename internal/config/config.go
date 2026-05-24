@@ -9,13 +9,14 @@ import (
 
 // Config holds application configuration.
 type Config struct {
-	DBPath         string
-	MigrationsPath string
-	GeminiApiKey   string
-	TtsApiKey      string
-	AnkiConnectUrl string
-	AnkiDeck       string
-	AnkiModel      string
+	DBPath           string
+	MigrationsPath   string
+	GeminiApiKey     string
+	TtsApiKey        string
+	AnkiConnectUrl   string
+	AnkiDeck         string
+	AnkiModel        string
+	TelegramBotToken string
 }
 
 // Get loads and returns the application configuration.
@@ -26,12 +27,13 @@ func Get() Config {
 	}
 
 	return Config{
-		DBPath:         `tmp/anki_vocabulary.db`,
-		MigrationsPath: `migrations`,
-		GeminiApiKey:   os.Getenv("GEMINI_API_KEY"),
-		TtsApiKey:      os.Getenv("GOOGLE_TTS_API_KEY"),
-		AnkiConnectUrl: os.Getenv("ANKI_CONNECT_URL"),
-		AnkiDeck:       os.Getenv("ANKI_DECK_NAME"),
-		AnkiModel:      os.Getenv("ANKI_MODEL_NAME"),
+		DBPath:           `tmp/anki_vocabulary.db`,
+		MigrationsPath:   `migrations`,
+		GeminiApiKey:     os.Getenv("GEMINI_API_KEY"),
+		TtsApiKey:        os.Getenv("GOOGLE_TTS_API_KEY"),
+		AnkiConnectUrl:   os.Getenv("ANKI_CONNECT_URL"),
+		AnkiDeck:         os.Getenv("ANKI_DECK_NAME"),
+		AnkiModel:        os.Getenv("ANKI_MODEL_NAME"),
+		TelegramBotToken: os.Getenv("TELEGRAM_BOT_TOKEN"),
 	}
 }

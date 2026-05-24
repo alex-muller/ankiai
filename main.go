@@ -13,6 +13,7 @@ import (
 	"github.com/alex-muller/ankiai/internal/module/export"
 	"github.com/alex-muller/ankiai/internal/module/lexicographer"
 	"github.com/alex-muller/ankiai/internal/module/notes"
+	"github.com/alex-muller/ankiai/internal/module/telegram"
 	"github.com/alex-muller/ankiai/internal/module/word"
 	"github.com/alex-muller/ankiai/internal/run"
 )
@@ -56,6 +57,9 @@ func main() {
 	// Exporter
 	exporter := export.NewExporter(conf, notesRepo)
 
+	// Telegram
+	telegramService := telegram.New(conf)
+
 	command := os.Args[1]
 
 	switch command {
@@ -76,6 +80,8 @@ func main() {
 		run.Daemon(ctx, lex, cardsWorker, ttsWorker)
 	case "export":
 		run.Export(ctx, exporter)
+	case "telegram":
+		run.Telegram(telegramService)
 
 	default:
 		fmt.Printf("Неизвестная команда: %s\n", command)
