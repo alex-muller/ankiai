@@ -47,7 +47,7 @@ func (a maker) run(ctx context.Context) error {
 	for _, addedWord := range addedWords {
 		err = a.processWord(ctx, addedWord)
 		if err != nil {
-			return fmt.Errorf(`process word [%s], error: %w`, addedWord.Word, err)
+			a.log.Error(`run`, slog.String("error", fmt.Errorf(`process word [%s], error: %w`, addedWord.Word, err).Error()))
 		}
 	}
 	return nil

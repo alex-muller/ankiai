@@ -19,7 +19,7 @@ func Daemon(
 	l.Info("daemon started")
 
 	// go lex.Run(ctx)
-	// go cardsWorker.Run(ctx)
+	go cardsWorker.Run(ctx)
 	go ttsWorker.Run(ctx)
 
 	<-ctx.Done()
