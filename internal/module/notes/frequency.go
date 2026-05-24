@@ -53,6 +53,9 @@ func (a *frequency) runOnce(ctx context.Context) error {
 	if len(words) == 0 {
 		return nil
 	}
+
+	words = a.cleanWords(words)
+
 	rawHtml, err := a.makeRequest(ctx, words, 1990, 2022)
 	if err != nil {
 		return fmt.Errorf(`make request: %w`, err)
@@ -65,6 +68,12 @@ func (a *frequency) runOnce(ctx context.Context) error {
 
 	if len(averages) == 0 {
 		return fmt.Errorf(`can't calculate averages`)
+	}
+
+	for _, word := range words {
+		if _, ok := averages[word]; !ok {
+			averages[word] = 0
+		}
 	}
 
 	err = a.repo.UpdateFrequencies(ctx, averages)
@@ -160,8 +169,34 @@ func (a *frequency) getAverages(rawHtml string) (map[string]float64, error) {
 	out := make(map[string]float64)
 
 	for word, avg := range averages {
+		word = strings.ReplaceAll(word, " - ", "-")
 		out[word] = avg
 	}
 
 	return out, nil
+}
+
+func (a *frequency) cleanWords(wordsList []string) []string {
+	var out = make([]string, 0, len(wordsList))
+
+	for _, text := range wordsList {
+		text = strings.ToLower(text)
+		// text = strings.ReplaceAll(text, "-", " ")
+		suffixes := []string{"'s", "’s", "'", "’"}
+		words := strings.Fields(text)
+
+		for i, word := range words {
+			for _, suffix := range suffixes {
+				if strings.HasSuffix(word, suffix) {
+					words[i] = strings.TrimSuffix(word, suffix)
+
+					break
+				}
+			}
+		}
+
+		out = append(out, strings.Join(words, " "))
+	}
+
+	return out
 }

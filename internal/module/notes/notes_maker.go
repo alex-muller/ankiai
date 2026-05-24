@@ -5,15 +5,12 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/alex-muller/ankiai/internal/lib/logger"
-	"github.com/alex-muller/ankiai/internal/lib/wp"
 	"github.com/alex-muller/ankiai/internal/module/word"
 )
 
@@ -34,68 +31,26 @@ type maker struct {
 	log       *slog.Logger
 }
 
-func (a maker) run(ctx context.Context) {
-	ch := make(chan word.Word)
+func (a maker) Run(ctx context.Context) {
+	err := a.run(ctx)
+	if err != nil {
+		a.log.Error(`run`, slog.String("error", err.Error()))
+	}
+}
 
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-
-	go func() {
-		wg.Done()
-		for {
-			select {
-			case <-ctx.Done():
-				close(ch)
-				return
-			default:
-				addedWords, err := a.wordsRepo.GetByStatus(ctx, word.StatusRaw)
-				if err != nil {
-					a.log.Error(`get words to process`, slog.String("error", err.Error()))
-					close(ch)
-				}
-
-				if len(addedWords) == 0 {
-					time.Sleep(1 * time.Second)
-					continue
-				}
-
-				for _, addedWord := range addedWords {
-					wg.Add(1)
-					ch <- addedWord
-				}
-				wg.Wait()
-			}
-		}
-	}()
-
-	pool := wp.NewWorkerPool(10, 10000)
-	pool.Start()
-
-	var i int
-	for word_ := range ch {
-		i++
-		taskID := i
-		task := wp.Task{
-			ID:      taskID,
-			Payload: word_,
-			Process: func(ctx context.Context, word_ any) error {
-				defer wg.Done()
-				w, ok := word_.(word.Word)
-				if !ok {
-					return errors.New(`invalid word type`)
-				}
-				return a.processWord(ctx, w)
-			},
-		}
-
-		if err := pool.Submit(task); err != nil {
-			a.log.Error("failed to submit task",
-				slog.Int("task_id", taskID),
-				slog.String("error", err.Error()))
-		}
+func (a maker) run(ctx context.Context) error {
+	addedWords, err := a.wordsRepo.GetByStatus(ctx, word.StatusRaw)
+	if err != nil {
+		return fmt.Errorf(`get words: %w`, err)
 	}
 
-	a.log.Debug(`task finished`)
+	for _, addedWord := range addedWords {
+		err = a.processWord(ctx, addedWord)
+		if err != nil {
+			return fmt.Errorf(`process word [%s], error: %w`, addedWord.Word, err)
+		}
+	}
+	return nil
 }
 
 func (a maker) processWord(ctx context.Context, word_ word.Word) error {
@@ -178,19 +133,7 @@ func (a maker) processCardJson(ctx context.Context, cardJson CardJson, word_ wor
 
 func (a maker) cleanWord(text string) string {
 	text = strings.ToLower(text)
-	suffixes := []string{"'s", "’s", "'", "’"}
-	words := strings.Fields(text)
-
-	for i, word := range words {
-		for _, suffix := range suffixes {
-			if strings.HasSuffix(word, suffix) {
-				words[i] = strings.TrimSuffix(word, suffix)
-				break
-			}
-		}
-	}
-
-	return strings.Join(words, " ")
+	return text
 }
 
 type GeminiResponse struct {

@@ -19,6 +19,6 @@ type Worker struct {
 }
 
 func (a *Worker) Run(ctx context.Context) {
-	go a.cardMaker.run(ctx)
+	go a.cardMaker.Run(ctx)
 	go a.frequency.run(ctx)
 }
