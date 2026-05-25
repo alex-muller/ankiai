@@ -21,7 +21,7 @@ func newMaker(
 	return &maker{
 		cardRepo:  cardRepo,
 		wordsRepo: wordsRepo,
-		log:       logger.Logger.With(slog.String("component", "card-maker")),
+		log:       logger.Logger.With(slog.String("component", "notes-maker")),
 	}
 }
 
@@ -116,14 +116,11 @@ func (a maker) processCardJson(ctx context.Context, cardJson CardJson, word_ wor
 
 			err := a.cardRepo.Add(ctx, ankiCard)
 
-			a.log.Info(
-				`added card`,
-				slog.String(`lemma`, ankiCard.Lemma),
-				slog.String(`word`, ankiCard.TargetWordForm),
-			)
-
 			if err != nil {
-				return fmt.Errorf(`add card: %w`, err)
+				if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+					continue
+				}
+				return fmt.Errorf(`add note [%+v], error: %w`, ankiCard, err)
 			}
 		}
 	}
@@ -133,7 +130,21 @@ func (a maker) processCardJson(ctx context.Context, cardJson CardJson, word_ wor
 
 func (a maker) cleanWord(text string) string {
 	text = strings.ToLower(text)
-	return text
+	// text = strings.ReplaceAll(text, "-", " ")
+	suffixes := []string{"'s", "’s", "'", "’"}
+	words := strings.Fields(text)
+
+	for i, word := range words {
+		for _, suffix := range suffixes {
+			if strings.HasSuffix(word, suffix) {
+				words[i] = strings.TrimSuffix(word, suffix)
+
+				break
+			}
+		}
+	}
+
+	return strings.Join(words, " ")
 }
 
 type GeminiResponse struct {
