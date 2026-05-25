@@ -1,4 +1,4 @@
-package notes
+package frequency
 
 import (
 	"context"
@@ -13,9 +13,10 @@ import (
 	"time"
 
 	"github.com/alex-muller/ankiai/internal/lib/logger"
+	"github.com/alex-muller/ankiai/internal/module/notes"
 )
 
-func NewFrequency(repo *Repo) FrequencyService {
+func NewFrequency(repo *notes.Repo) FrequencyService {
 	return FrequencyService{
 		log:  logger.Logger.With("component", "frequency"),
 		repo: repo,
@@ -24,7 +25,7 @@ func NewFrequency(repo *Repo) FrequencyService {
 
 type FrequencyService struct {
 	log  *slog.Logger
-	repo *Repo
+	repo *notes.Repo
 }
 
 func (a *FrequencyService) Run(ctx context.Context) {
@@ -44,7 +45,7 @@ func (a *FrequencyService) Run(ctx context.Context) {
 }
 
 func (a *FrequencyService) runOnce(ctx context.Context) error {
-	words, err := a.repo.FindManyUniqueTargetWordsByStatus(ctx, FrequencyPending, 10)
+	words, err := a.repo.FindManyUniqueTargetWordsByStatus(ctx, notes.FrequencyPending, 10)
 	if err != nil {
 		a.log.Error(`find cards by status "created" failed`, slog.String("error", err.Error()))
 		return err

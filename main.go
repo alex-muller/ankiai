@@ -11,9 +11,11 @@ import (
 	"github.com/alex-muller/ankiai/internal/lib/db"
 	"github.com/alex-muller/ankiai/internal/lib/logger"
 	"github.com/alex-muller/ankiai/internal/module/export"
+	"github.com/alex-muller/ankiai/internal/module/frequency"
 	"github.com/alex-muller/ankiai/internal/module/lexicographer"
 	"github.com/alex-muller/ankiai/internal/module/notes"
 	"github.com/alex-muller/ankiai/internal/module/telegram"
+	"github.com/alex-muller/ankiai/internal/module/tts"
 	"github.com/alex-muller/ankiai/internal/module/word"
 	"github.com/alex-muller/ankiai/internal/run"
 )
@@ -49,13 +51,13 @@ func main() {
 	lex := lexicographer.New(wordRepo, conf.GeminiApiKey)
 
 	// Frequency service
-	frequency := notes.NewFrequency(notesRepo)
+	frequency := frequency.NewFrequency(notesRepo)
 
 	// Notes maker
 	notesMaker := notes.NewMaker(notesRepo, wordRepo)
 
 	// TTS worker
-	ttsWorker := notes.NewTtsWorker(conf, notesRepo)
+	ttsWorker := tts.NewTtsWorker(conf, notesRepo)
 
 	// Exporter
 	exporter := export.NewExporter(conf, notesRepo)

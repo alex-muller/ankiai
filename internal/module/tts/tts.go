@@ -1,4 +1,4 @@
-package notes
+package tts
 
 import (
 	"bytes"
@@ -14,9 +14,10 @@ import (
 
 	"github.com/alex-muller/ankiai/internal/config"
 	"github.com/alex-muller/ankiai/internal/lib/logger"
+	"github.com/alex-muller/ankiai/internal/module/notes"
 )
 
-func NewTtsWorker(conf config.Config, repo *Repo) *Tts {
+func NewTtsWorker(conf config.Config, repo *notes.Repo) *Tts {
 	return &Tts{
 		ttsApiKey: conf.TtsApiKey,
 		repo:      repo,
@@ -26,7 +27,7 @@ func NewTtsWorker(conf config.Config, repo *Repo) *Tts {
 
 type Tts struct {
 	ttsApiKey string
-	repo      *Repo
+	repo      *notes.Repo
 	log       *slog.Logger
 }
 
@@ -45,7 +46,7 @@ func (a Tts) Run(ctx context.Context) {
 }
 
 func (a Tts) runOnce(ctx context.Context) {
-	ch := make(chan Note)
+	ch := make(chan notes.Note)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -74,7 +75,7 @@ func (a Tts) runOnce(ctx context.Context) {
 		}()
 	}
 
-	notes, err := a.repo.GetManyByStatus(ctx, GenerateAudioPending, 10)
+	notes, err := a.repo.GetManyByStatus(ctx, notes.GenerateAudioPending, 10)
 	if err != nil {
 		a.log.Error(`get notes`, slog.String(`error`, err.Error()))
 		return
@@ -94,7 +95,7 @@ func (a Tts) runOnce(ctx context.Context) {
 	wg.Wait()
 }
 
-func (a Tts) processOneNote(ctx context.Context, note Note) error {
+func (a Tts) processOneNote(ctx context.Context, note notes.Note) error {
 	audio, err := a.getPhrase(ctx, note.MarkedSentence)
 	if err != nil {
 		return fmt.Errorf(`get phrase: %w`, err)

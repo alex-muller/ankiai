@@ -5,16 +5,18 @@ import (
 	"log/slog"
 
 	"github.com/alex-muller/ankiai/internal/lib/logger"
+	"github.com/alex-muller/ankiai/internal/module/frequency"
 	"github.com/alex-muller/ankiai/internal/module/lexicographer"
 	"github.com/alex-muller/ankiai/internal/module/notes"
+	"github.com/alex-muller/ankiai/internal/module/tts"
 )
 
 func Daemon(
 	ctx context.Context,
 	lex *lexicographer.Service,
-	frequency notes.FrequencyService,
+	frequency frequency.FrequencyService,
 	notesMaker *notes.Maker,
-	ttsWorker *notes.Tts,
+	ttsWorker *tts.Tts,
 ) {
 	l := logger.Logger.With(slog.String("component", "daemon"))
 	l.Info("daemon started")
