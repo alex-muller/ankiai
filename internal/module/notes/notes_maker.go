@@ -32,10 +32,20 @@ type Maker struct {
 }
 
 func (a Maker) Run(ctx context.Context) {
-	err := a.run(ctx)
-	if err != nil {
-		a.log.Error(`run`, slog.String("error", err.Error()))
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			err := a.run(ctx)
+			if err != nil {
+				a.log.Error(`run`, slog.String("error", err.Error()))
+			}
+			fmt.Println(`--- card maker done, sleep ---`)
+			time.Sleep(time.Minute)
+		}
 	}
+
 }
 
 func (a Maker) run(ctx context.Context) error {
