@@ -1,7 +1,6 @@
 package run
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"log/slog"
@@ -12,7 +11,15 @@ import (
 	"github.com/alex-muller/ankiai/internal/module/word"
 )
 
-func Import(ctx context.Context, repository *word.Repository, filePath string) error {
+func ImportFromFile(ctx context.Context, repository *word.Repository, filePath string) error {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf(`read file: %w`, err)
+	}
+
+	// Если это текстовый файл, конвертируем []byte в string
+	content := string(data)
+
 	// Attach context to all logs generated within this function
 	l := logger.Logger.With(
 		slog.String("component", "importer"),
@@ -21,7 +28,7 @@ func Import(ctx context.Context, repository *word.Repository, filePath string) e
 
 	l.Info("starting import process")
 
-	words, err := parseAndSanitizeWords(filePath)
+	words, err := parseAndSanitizeWords(content)
 	if err != nil {
 		l.Error("failed to process import file", slog.String("error", err.Error()))
 		return err
@@ -44,49 +51,30 @@ func Import(ctx context.Context, repository *word.Repository, filePath string) e
 	return nil
 }
 
-func parseAndSanitizeWords(filePath string) ([]string, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("could not open file: %w", err)
-	}
-	defer file.Close()
-
+func parseAndSanitizeWords(text string) ([]string, error) {
 	// Using a map with an empty struct as a memory-efficient Set for deduplication
 	uniqueSet := make(map[string]struct{})
 	var result []string
 
-	scanner := bufio.NewScanner(file)
+	// Split by comma to handle multiple words on a single line
+	parts := strings.Split(text, ",")
 
-	// Read file line by line
-	for scanner.Scan() {
-		line := scanner.Text()
+	for _, part := range parts {
+		word := strings.Join(strings.Fields(part), " ")
 
-		// Split by comma to handle multiple words on a single line
-		parts := strings.Split(line, ",")
+		// 2. Normalize: convert to lowercase
+		word = strings.ToLower(word)
 
-		for _, part := range parts {
-			// 1. Collapse multiple spaces/tabs into a single space
-			// strings.Fields splits by any whitespace, strings.Join connects with " "
-			word := strings.Join(strings.Fields(part), " ")
-
-			// 2. Normalize: convert to lowercase
-			word = strings.ToLower(word)
-
-			// 3. Validate: skip empty strings
-			if word == "" {
-				continue
-			}
-
-			// 4. Deduplicate: check if word is already in our Set
-			if _, exists := uniqueSet[word]; !exists {
-				uniqueSet[word] = struct{}{}
-				result = append(result, word)
-			}
+		// 3. Validate: skip empty strings
+		if word == "" {
+			continue
 		}
-	}
 
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading file stream: %w", err)
+		// 4. Deduplicate: check if word is already in our Set
+		if _, exists := uniqueSet[word]; !exists {
+			uniqueSet[word] = struct{}{}
+			result = append(result, word)
+		}
 	}
 
 	return result, nil

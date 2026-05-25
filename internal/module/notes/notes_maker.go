@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alex-muller/ankiai/internal/lib"
 	"github.com/alex-muller/ankiai/internal/lib/logger"
 	"github.com/alex-muller/ankiai/internal/module/word"
 )
@@ -109,7 +110,7 @@ func (a Maker) processCardJson(ctx context.Context, cardJson CardJson, word_ wor
 				WordID:         word_.ID,
 				Lemma:          strings.ToLower(cardJson.Lemma),
 				CardHash:       hex.EncodeToString(sum[:]),
-				TargetWordForm: a.cleanWord(example.TargetWordForm),
+				TargetWordForm: lib.CleanWord(example.TargetWordForm),
 				MarkedSentence: example.MarkedSentence,
 				Translation:    example.Translation,
 				GrammarNote:    example.GrammarNote,
@@ -136,25 +137,6 @@ func (a Maker) processCardJson(ctx context.Context, cardJson CardJson, word_ wor
 	}
 
 	return nil
-}
-
-func (a Maker) cleanWord(text string) string {
-	text = strings.ToLower(text)
-	// text = strings.ReplaceAll(text, "-", " ")
-	suffixes := []string{"'s", "’s", "'", "’"}
-	words := strings.Fields(text)
-
-	for i, word := range words {
-		for _, suffix := range suffixes {
-			if strings.HasSuffix(word, suffix) {
-				words[i] = strings.TrimSuffix(word, suffix)
-
-				break
-			}
-		}
-	}
-
-	return strings.Join(words, " ")
 }
 
 type GeminiResponse struct {

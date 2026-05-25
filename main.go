@@ -63,7 +63,7 @@ func main() {
 	exporter := export.NewExporter(conf, notesRepo)
 
 	// Telegram
-	telegramService := telegram.New(conf)
+	telegramService := telegram.New(conf, wordRepo)
 
 	command := os.Args[1]
 
@@ -74,7 +74,7 @@ func main() {
 			os.Exit(1)
 		}
 		// Запуск: ./ankiai import words.txt
-		err = run.Import(ctx, wordRepo, os.Args[2])
+		err = run.ImportFromFile(ctx, wordRepo, os.Args[2])
 		if err != nil {
 			log.Fatalf(`run import "%s"`, err)
 		}

@@ -10,16 +10,18 @@ import (
 	"time"
 
 	"github.com/alex-muller/ankiai/internal/config"
+	"github.com/alex-muller/ankiai/internal/module/word"
 )
 
-func New(conf config.Config) *Service {
+func New(conf config.Config, wordsRepo *word.Repository) *Service {
 	return &Service{
 		conf: conf,
 	}
 }
 
 type Service struct {
-	conf config.Config
+	conf      config.Config
+	wordsRepo *word.Repository
 }
 
 func (a Service) Run() {
@@ -73,7 +75,9 @@ func (a Service) Run() {
 				continue
 			}
 
-			word := strings.TrimSpace(update.Message.Text)
+			words := strings.TrimSpace(update.Message.Text)
+
+			strings.Split(words, ",")
 
 			// ==========================================
 			// ТУТ БУДЕТ ВАША ЛОГИКА РАБОТЫ С БАЗОЙ (SQLite)
@@ -82,9 +86,9 @@ func (a Service) Run() {
 
 			var replyText string
 			if exists {
-				replyText = fmt.Sprintf("Слово *%s* уже есть в словаре 🤷‍♂️", word)
+				replyText = fmt.Sprintf("Слово *%s* уже есть в словаре 🤷‍♂️", words)
 			} else {
-				replyText = fmt.Sprintf("Слово *%s* добавлено в очередь ✅", word)
+				replyText = fmt.Sprintf("Слово *%s* добавлено в очередь ✅", words)
 			}
 			// ==========================================
 
@@ -100,7 +104,7 @@ func (a Service) Run() {
 			if err != nil {
 				log.Printf("Ошибка отправки ответа: %v", err)
 			} else {
-				log.Printf("Обработано слово: %s", word)
+				log.Printf("Обработано слово: %s", words)
 			}
 		}
 	}

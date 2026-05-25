@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alex-muller/ankiai/internal/lib"
 	"github.com/alex-muller/ankiai/internal/lib/logger"
 	"github.com/alex-muller/ankiai/internal/module/notes"
 )
@@ -181,22 +182,7 @@ func (a *FrequencyService) cleanWords(wordsList []string) []string {
 	var out = make([]string, 0, len(wordsList))
 
 	for _, text := range wordsList {
-		text = strings.ToLower(text)
-		// text = strings.ReplaceAll(text, "-", " ")
-		suffixes := []string{"'s", "’s", "'", "’"}
-		words := strings.Fields(text)
-
-		for i, word := range words {
-			for _, suffix := range suffixes {
-				if strings.HasSuffix(word, suffix) {
-					words[i] = strings.TrimSuffix(word, suffix)
-
-					break
-				}
-			}
-		}
-
-		out = append(out, strings.Join(words, " "))
+		out = append(out, lib.CleanWord(text))
 	}
 
 	return out
