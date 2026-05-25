@@ -48,8 +48,11 @@ func main() {
 	// Lexer
 	lex := lexicographer.New(wordRepo, conf.GeminiApiKey)
 
-	// Cards worker
-	cardsWorker := notes.NewWorker(wordRepo, notesRepo)
+	// Frequency service
+	frequency := notes.NewFrequency(notesRepo)
+
+	// Notes maker
+	notesMaker := notes.NewMaker(notesRepo, wordRepo)
 
 	// TTS worker
 	ttsWorker := notes.NewTtsWorker(conf, notesRepo)
@@ -77,7 +80,7 @@ func main() {
 		run.Examples(ctx, lex)
 	case "daemon":
 		// Запуск: ./ankiai daemon
-		run.Daemon(ctx, lex, cardsWorker, ttsWorker)
+		run.Daemon(ctx, lex, frequency, notesMaker, ttsWorker)
 	case "export":
 		run.Export(ctx, exporter)
 	case "telegram":

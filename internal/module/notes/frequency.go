@@ -15,19 +15,19 @@ import (
 	"github.com/alex-muller/ankiai/internal/lib/logger"
 )
 
-func newFrequency(repo *Repo) frequency {
-	return frequency{
+func NewFrequency(repo *Repo) FrequencyService {
+	return FrequencyService{
 		log:  logger.Logger.With("component", "frequency"),
 		repo: repo,
 	}
 }
 
-type frequency struct {
+type FrequencyService struct {
 	log  *slog.Logger
 	repo *Repo
 }
 
-func (a *frequency) run(ctx context.Context) {
+func (a *FrequencyService) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -43,7 +43,7 @@ func (a *frequency) run(ctx context.Context) {
 	}
 }
 
-func (a *frequency) runOnce(ctx context.Context) error {
+func (a *FrequencyService) runOnce(ctx context.Context) error {
 	words, err := a.repo.FindManyUniqueTargetWordsByStatus(ctx, FrequencyPending, 10)
 	if err != nil {
 		a.log.Error(`find cards by status "created" failed`, slog.String("error", err.Error()))
@@ -86,7 +86,7 @@ func (a *frequency) runOnce(ctx context.Context) error {
 	return nil
 }
 
-func (a *frequency) makeRequest(ctx context.Context, words []string, fromYear, toYear int) (string, error) {
+func (a *FrequencyService) makeRequest(ctx context.Context, words []string, fromYear, toYear int) (string, error) {
 	if len(words) == 0 {
 		return ``, nil
 	}
@@ -129,7 +129,7 @@ type NgramData struct {
 	Timeseries []float64 `json:"timeseries"`
 }
 
-func (a *frequency) getAverages(rawHtml string) (map[string]float64, error) {
+func (a *FrequencyService) getAverages(rawHtml string) (map[string]float64, error) {
 	// 1. Extract JSON using Regular Expression
 	// (?s) allows the dot (.) to match newline characters
 	re := regexp.MustCompile(`(?s)<script id="ngrams-data" type="application/json">\s*(.*?)\s*</script>`)
@@ -176,7 +176,7 @@ func (a *frequency) getAverages(rawHtml string) (map[string]float64, error) {
 	return out, nil
 }
 
-func (a *frequency) cleanWords(wordsList []string) []string {
+func (a *FrequencyService) cleanWords(wordsList []string) []string {
 	var out = make([]string, 0, len(wordsList))
 
 	for _, text := range wordsList {

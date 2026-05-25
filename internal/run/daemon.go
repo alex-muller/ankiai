@@ -12,14 +12,16 @@ import (
 func Daemon(
 	ctx context.Context,
 	lex *lexicographer.Service,
-	cardsWorker *notes.Worker,
+	frequency notes.FrequencyService,
+	notesMaker *notes.Maker,
 	ttsWorker *notes.Tts,
 ) {
 	l := logger.Logger.With(slog.String("component", "daemon"))
 	l.Info("daemon started")
 
 	// go lex.Run(ctx)
-	go cardsWorker.Run(ctx)
+	go notesMaker.Run(ctx)
+	go frequency.Run(ctx)
 	go ttsWorker.Run(ctx)
 
 	<-ctx.Done()

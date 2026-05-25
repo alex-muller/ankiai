@@ -14,31 +14,31 @@ import (
 	"github.com/alex-muller/ankiai/internal/module/word"
 )
 
-func newMaker(
-	cardRepo *Repo,
+func NewMaker(
+	notesRepo *Repo,
 	wordsRepo *word.Repository,
-) *maker {
-	return &maker{
-		cardRepo:  cardRepo,
+) *Maker {
+	return &Maker{
+		notesRepo: notesRepo,
 		wordsRepo: wordsRepo,
 		log:       logger.Logger.With(slog.String("component", "notes-maker")),
 	}
 }
 
-type maker struct {
-	cardRepo  *Repo
+type Maker struct {
+	notesRepo *Repo
 	wordsRepo *word.Repository
 	log       *slog.Logger
 }
 
-func (a maker) Run(ctx context.Context) {
+func (a Maker) Run(ctx context.Context) {
 	err := a.run(ctx)
 	if err != nil {
 		a.log.Error(`run`, slog.String("error", err.Error()))
 	}
 }
 
-func (a maker) run(ctx context.Context) error {
+func (a Maker) run(ctx context.Context) error {
 	addedWords, err := a.wordsRepo.GetByStatus(ctx, word.StatusRaw)
 	if err != nil {
 		return fmt.Errorf(`get words: %w`, err)
@@ -53,7 +53,7 @@ func (a maker) run(ctx context.Context) error {
 	return nil
 }
 
-func (a maker) processWord(ctx context.Context, word_ word.Word) error {
+func (a Maker) processWord(ctx context.Context, word_ word.Word) error {
 	resp := GeminiResponse{}
 
 	err := json.Unmarshal([]byte(word_.RawJSON), &resp)
@@ -90,7 +90,7 @@ func (a maker) processWord(ctx context.Context, word_ word.Word) error {
 	return nil
 }
 
-func (a maker) processCardJson(ctx context.Context, cardJson CardJson, word_ word.Word) error {
+func (a Maker) processCardJson(ctx context.Context, cardJson CardJson, word_ word.Word) error {
 	now := time.Now()
 	for _, sens := range cardJson.Senses {
 		for _, example := range sens.Examples {
@@ -114,7 +114,7 @@ func (a maker) processCardJson(ctx context.Context, cardJson CardJson, word_ wor
 				CreatedAt:      now,
 			}
 
-			err := a.cardRepo.Add(ctx, ankiCard)
+			err := a.notesRepo.Add(ctx, ankiCard)
 
 			if err != nil {
 				if strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -128,7 +128,7 @@ func (a maker) processCardJson(ctx context.Context, cardJson CardJson, word_ wor
 	return nil
 }
 
-func (a maker) cleanWord(text string) string {
+func (a Maker) cleanWord(text string) string {
 	text = strings.ToLower(text)
 	// text = strings.ReplaceAll(text, "-", " ")
 	suffixes := []string{"'s", "’s", "'", "’"}
