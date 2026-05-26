@@ -32,10 +32,10 @@ func (a Service) ImportFromFile(ctx context.Context, filePath string) ([]string,
 	}
 
 	text := string(data)
-	return a.importText(ctx, text)
+	return a.ImportText(ctx, text)
 }
 
-func (a Service) importText(ctx context.Context, text string) ([]string, error) {
+func (a Service) ImportText(ctx context.Context, text string) ([]string, error) {
 	words, err := prepare(text)
 	if err != nil {
 		return nil, fmt.Errorf(`prepare words: %w`, err)
@@ -67,7 +67,19 @@ func prepare(text string) ([]string, error) {
 			continue
 		}
 
-		// 4. Deduplicate: check if word is already in our Set
+		// 4. Validate: check if word contains only Latin letters, spaces, and hyphens
+		isValid := true
+		for _, char := range word {
+			if !((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || char == ' ' || char == '-') {
+				isValid = false
+				break
+			}
+		}
+		if !isValid {
+			continue
+		}
+
+		// 5. Deduplicate: check if word is already in our Set
 		if _, exists := uniqueSet[word]; !exists {
 			uniqueSet[word] = struct{}{}
 			result = append(result, word)

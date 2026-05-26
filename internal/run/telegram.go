@@ -1,7 +1,11 @@
 package run
 
-import "github.com/alex-muller/ankiai/internal/module/telegram"
+import (
+	"context"
 
-func Telegram(service *telegram.Service) {
-	service.Run()
+	"github.com/alex-muller/ankiai/internal/module/telegram"
+)
+
+func Telegram(ctx context.Context, service *telegram.Service) {
+	service.Run(ctx)
 }

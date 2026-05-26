@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,21 +11,22 @@ import (
 	"time"
 
 	"github.com/alex-muller/ankiai/internal/config"
-	"github.com/alex-muller/ankiai/internal/module/word"
+	"github.com/alex-muller/ankiai/internal/module/importer"
 )
 
-func New(conf config.Config, wordsRepo *word.Repository) *Service {
+func New(conf config.Config, importService *importer.Service) *Service {
 	return &Service{
-		conf: conf,
+		conf:          conf,
+		importService: importService,
 	}
 }
 
 type Service struct {
-	conf      config.Config
-	wordsRepo *word.Repository
+	conf          config.Config
+	importService *importer.Service
 }
 
-func (a Service) Run() {
+func (a Service) Run(ctx context.Context) {
 
 	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s", a.conf.TelegramBotToken)
 
@@ -77,20 +79,17 @@ func (a Service) Run() {
 
 			words := strings.TrimSpace(update.Message.Text)
 
-			strings.Split(words, ",")
-
-			// ==========================================
-			// ТУТ БУДЕТ ВАША ЛОГИКА РАБОТЫ С БАЗОЙ (SQLite)
-			// ==========================================
-			exists := false // Заглушка (поменяйте на вызов к БД)
-
+			imported, err := a.importService.ImportText(ctx, update.Message.Text)
 			var replyText string
-			if exists {
-				replyText = fmt.Sprintf("Слово *%s* уже есть в словаре 🤷‍♂️", words)
+			if err != nil {
+				replyText = fmt.Sprintf("❌ Ошибка: %s", err.Error())
 			} else {
-				replyText = fmt.Sprintf("Слово *%s* добавлено в очередь ✅", words)
+				if len(imported) > 0 {
+					replyText = fmt.Sprintf("✅ Импортировано [%s] добавлено в очередь", strings.Join(imported, ", "))
+				} else {
+					replyText = `Похоже данные слова уже импортированы`
+				}
 			}
-			// ==========================================
 
 			// 3. ОТПРАВЛЯЕМ ОТВЕТ
 			sendReq := SendMessageRequest{

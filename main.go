@@ -67,7 +67,7 @@ func main() {
 	importer := importer.NewService(wordRepo)
 
 	// Telegram
-	telegramService := telegram.New(conf, wordRepo)
+	telegramService := telegram.New(conf, importer)
 
 	command := os.Args[1]
 
@@ -90,7 +90,7 @@ func main() {
 	case "export":
 		run.Export(ctx, exporter)
 	case "telegram":
-		run.Telegram(telegramService)
+		run.Telegram(ctx, telegramService)
 
 	default:
 		fmt.Printf("Неизвестная команда: %s\n", command)
