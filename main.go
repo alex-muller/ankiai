@@ -12,6 +12,7 @@ import (
 	"github.com/alex-muller/ankiai/internal/lib/logger"
 	"github.com/alex-muller/ankiai/internal/module/export"
 	"github.com/alex-muller/ankiai/internal/module/frequency"
+	"github.com/alex-muller/ankiai/internal/module/importer"
 	"github.com/alex-muller/ankiai/internal/module/lexicographer"
 	"github.com/alex-muller/ankiai/internal/module/notes"
 	"github.com/alex-muller/ankiai/internal/module/telegram"
@@ -62,6 +63,9 @@ func main() {
 	// Exporter
 	exporter := export.NewExporter(conf, notesRepo)
 
+	// Importer
+	importer := importer.NewService(wordRepo)
+
 	// Telegram
 	telegramService := telegram.New(conf, wordRepo)
 
@@ -74,7 +78,7 @@ func main() {
 			os.Exit(1)
 		}
 		// Запуск: ./ankiai import words.txt
-		err = run.ImportFromFile(ctx, wordRepo, os.Args[2])
+		err = run.ImportFromFile(ctx, importer, os.Args[2])
 		if err != nil {
 			log.Fatalf(`run import "%s"`, err)
 		}

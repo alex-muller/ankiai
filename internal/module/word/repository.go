@@ -2,7 +2,7 @@ package word
 
 import (
 	"context"
-	"strings"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -17,20 +17,22 @@ type Repository struct {
 	db *sqlx.DB
 }
 
-func (a Repository) Add(ctx context.Context, words []string) (int, error) {
-	placeholders := make([]string, len(words))
-	args := make([]any, len(words))
-	for i, w := range words {
-		placeholders[i] = "(?)"
-		args[i] = w
+func (a Repository) Add(ctx context.Context, words []string) ([]string, error) {
+	var output = make([]string, 0, len(words))
+	query := "INSERT OR IGNORE INTO words (word) VALUES ($1)"
+
+	for _, word := range words {
+		res, err := a.db.ExecContext(ctx, query, word)
+		if err != nil {
+			return nil, fmt.Errorf(`insert: %w`, err)
+		}
+
+		if n, _ := res.RowsAffected(); n == 1 {
+			output = append(output, word)
+		}
 	}
-	query := "INSERT OR IGNORE INTO words (word) VALUES " + strings.Join(placeholders, ", ")
-	res, err := a.db.ExecContext(ctx, query, args...)
-	if err != nil {
-		return 0, err
-	}
-	n, err := res.RowsAffected()
-	return int(n), err
+
+	return output, nil
 }
 
 func (a Repository) Update(ctx context.Context, w Word) error {
