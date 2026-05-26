@@ -86,7 +86,7 @@ func main() {
 		run.Examples(ctx, lex)
 	case "daemon":
 		// Запуск: ./ankiai daemon
-		run.Daemon(ctx, lex, frequency, notesMaker, ttsWorker)
+		run.Daemon(ctx, lex, frequency, notesMaker, telegramService, ttsWorker)
 	case "export":
 		run.Export(ctx, exporter)
 	case "telegram":
