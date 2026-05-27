@@ -10,30 +10,34 @@ CREATE TABLE words
     created_at DATETIME             DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE notes
+create table notes
 (
-    id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    word_id          INTEGER     NOT NULL,
-    lemma            TEXT        NOT NULL,
-    card_hash        TEXT UNIQUE NOT NULL,
-    target_word_form TEXT        NOT NULL,
-    marked_sentence  TEXT        NOT NULL,
-    translation      TEXT        NOT NULL,
-    grammar_note     TEXT        NOT NULL DEFAULT '',
-    synonyms         TEXT        NOT NULL DEFAULT '',
-    part_of_speech   TEXT        NOT NULL DEFAULT '',
-    definition_en    TEXT        NOT NULL DEFAULT '',
-    definition_ru    TEXT        NOT NULL DEFAULT '',
-    translation_ru   TEXT        NOT NULL DEFAULT '',
-    audio_filename   TEXT        NOT NULL DEFAULT '',
-    audio_base64     TEXT        NOT NULL DEFAULT '',
-    status           INTEGER     NOT NULL DEFAULT 0,
-    frequency        REAL        NOT NULL DEFAULT 0,
-    created_at       DATETIME             DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (word_id) REFERENCES words (id) ON DELETE CASCADE
+    id               INTEGER
+        primary key autoincrement,
+    word_id          INTEGER             not null
+        references words
+            on delete cascade,
+    anki_note_id     integer  default 0  not null,
+    lemma            TEXT                not null,
+    card_hash        TEXT                not null
+        unique,
+    target_word_form TEXT                not null,
+    marked_sentence  TEXT                not null,
+    translation      TEXT                not null,
+    grammar_note     TEXT     default '' not null,
+    synonyms         TEXT     default '' not null,
+    part_of_speech   TEXT     default '' not null,
+    definition_en    TEXT     default '' not null,
+    definition_ru    TEXT     default '' not null,
+    translation_ru   TEXT     default '' not null,
+    audio_filename   TEXT     default '' not null,
+    audio_base64     TEXT     default '' not null,
+    status           INTEGER  default 0,
+    frequency        REAL     default 0  not null,
+    created_at       DATETIME default CURRENT_TIMESTAMP
 );
 
-create index notes_status_target_word_form_index
+create index anki_cards_status_target_word_form_index
     on notes (status, target_word_form);
 
 -- +goose StatementEnd

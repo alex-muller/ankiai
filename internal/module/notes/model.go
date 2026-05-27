@@ -13,6 +13,7 @@ const (
 
 type Note struct {
 	ID             int64     `db:"id"`
+	AnkiNoteID     int64     `db:"anki_note_id"`
 	WordID         int       `db:"word_id"`
 	Lemma          string    `db:"lemma"`
 	CardHash       string    `db:"card_hash"`

@@ -93,8 +93,8 @@ func (a Repo) AddAudio(ctx context.Context, noteId int64, audioContent, audioFil
 	return err
 }
 
-func (a Repo) UpdateStatus(ctx context.Context, noteId int64, status Status) error {
-	q := "UPDATE notes SET status = ? WHERE id = ?"
-	_, err := a.db.ExecContext(ctx, q, status, noteId)
+func (a Repo) SetAsExported(ctx context.Context, noteId, ankiNoteId int64, status Status) error {
+	q := "UPDATE notes SET status = ?, anki_note_id = ? WHERE id = ?"
+	_, err := a.db.ExecContext(ctx, q, status, ankiNoteId, noteId)
 	return err
 }

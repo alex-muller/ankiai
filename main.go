@@ -89,6 +89,8 @@ func main() {
 		run.Daemon(ctx, lex, frequency, notesMaker, telegramService, ttsWorker)
 	case "export":
 		run.Export(ctx, exporter)
+	case "update":
+		run.Update(ctx, exporter)
 	case "telegram":
 		run.Telegram(ctx, telegramService)
 

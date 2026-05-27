@@ -12,3 +12,10 @@ func Export(ctx context.Context, exporter *export.Exporter) {
 		panic(err)
 	}
 }
+
+func Update(ctx context.Context, exporter *export.Exporter) {
+	err := exporter.Update(ctx)
+	if err != nil {
+		panic(err)
+	}
+}
