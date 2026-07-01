@@ -39,7 +39,7 @@ func (a Tts) Run(ctx context.Context) {
 		default:
 			a.runOnce(ctx)
 
-			fmt.Println(`--- audio generation wait ---`)
+			//fmt.Println(`--- audio generation wait ---`)
 			time.Sleep(2100 * time.Millisecond)
 		}
 	}

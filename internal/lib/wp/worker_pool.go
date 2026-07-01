@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
-	"time"
 
 	"github.com/alex-muller/ankiai/internal/lib/logger"
 	"golang.org/x/time/rate"
@@ -48,10 +47,6 @@ func NewWorkerPool(workers int, tasksPerMinute int) *WorkerPool {
 
 // Start launches all workers
 func (wp *WorkerPool) Start() {
-	wp.logger.Debug("starting worker pool",
-		slog.Int("workers", wp.workers),
-		slog.Float64("rate_limit_per_second", float64(wp.rateLimiter.Limit())))
-
 	for i := 0; i < wp.workers; i++ {
 		wp.wg.Add(1)
 		go wp.worker(i)
@@ -62,37 +57,25 @@ func (wp *WorkerPool) Start() {
 func (wp *WorkerPool) worker(id int) {
 	defer wp.wg.Done()
 
-	workerLogger := wp.logger.With(slog.Int("worker_id", id))
-	workerLogger.Debug("worker started")
-
 	for {
 		select {
 		case <-wp.ctx.Done():
-			workerLogger.Debug("worker stopping")
+
 			return
 		case task, ok := <-wp.taskQueue:
 			if !ok {
-				workerLogger.Debug("task queue closed, worker stopping")
 				return
 			}
 
 			// Wait for rate limiter permission
 			if err := wp.rateLimiter.Wait(wp.ctx); err != nil {
-				workerLogger.Error("rate limiter error", slog.String("error", err.Error()))
 				continue
 			}
 
-			taskLogger := workerLogger.With(slog.Int("task_id", task.ID))
-			taskLogger.Debug("processing task")
-
-			startTime := time.Now()
 			if err := task.Process(wp.ctx, task.Payload); err != nil {
-				taskLogger.Error("task processing failed",
-					slog.String("error", err.Error()),
-					slog.Duration("duration", time.Since(startTime)))
+				// TODO
 			} else {
-				taskLogger.Debug("task completed successfully",
-					slog.Duration("duration", time.Since(startTime)))
+				// TODO
 			}
 		}
 	}
