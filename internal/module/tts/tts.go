@@ -25,6 +25,29 @@ func NewTtsWorker(conf config.Config, repo *notes.Repo) *Tts {
 	}
 }
 
+type lang int
+
+const (
+	langEn lang = 1
+	langPl lang = 2
+)
+
+type voice struct {
+	LanguageCode string `json:"languageCode"`
+	Name         string `json:"name"`
+}
+
+var voices = map[lang]voice{
+	langPl: {
+		LanguageCode: "pl-PL",
+		Name:         "pl-PL-Chirp3-HD-Zubenelgenubi",
+	},
+	langEn: {
+		LanguageCode: "en-US",
+		Name:         "en-US-Journey-F",
+	},
+}
+
 type Tts struct {
 	ttsApiKey string
 	repo      *notes.Repo
@@ -96,12 +119,22 @@ func (a Tts) runOnce(ctx context.Context) {
 }
 
 func (a Tts) processOneNote(ctx context.Context, note notes.Note) error {
-	audio, err := a.getPhrase(ctx, note.MarkedSentence)
+	audioEn, err := a.getPhrase(ctx, note.MarkedSentence, langEn)
 	if err != nil {
-		return fmt.Errorf(`get phrase: %w`, err)
+		return fmt.Errorf(`get en phrase: %w`, err)
 	}
 
-	err = a.repo.AddAudio(ctx, note.ID, audio, note.CardHash+`.mp3`)
+	err = a.repo.AddAudio(ctx, note.ID, audioEn, note.CardHash+`.mp3`)
+	if err != nil {
+		return fmt.Errorf(`add audio: %w`, err)
+	}
+
+	audioPl, err := a.getPhrase(ctx, note.TranslationPl, langPl)
+	if err != nil {
+		return fmt.Errorf(`get pl phrase: %w`, err)
+	}
+
+	err = a.repo.AddAudioPl(ctx, note.ID, audioPl, note.CardHash+`_pl.mp3`)
 	if err != nil {
 		return fmt.Errorf(`add audio: %w`, err)
 	}
@@ -109,7 +142,12 @@ func (a Tts) processOneNote(ctx context.Context, note notes.Note) error {
 	return nil
 }
 
-func (a Tts) getPhrase(ctx context.Context, phrase string) (string, error) {
+func (a Tts) getPhrase(ctx context.Context, phrase string, l lang) (string, error) {
+	voice_, ok := voices[l]
+	if !ok {
+		return "", fmt.Errorf(`voice not found`)
+	}
+
 	phrase = strings.ReplaceAll(phrase, "*", "")
 
 	payload := &TtsPayload{
@@ -118,13 +156,7 @@ func (a Tts) getPhrase(ctx context.Context, phrase string) (string, error) {
 		}{
 			Text: phrase,
 		},
-		Voice: struct {
-			LanguageCode string `json:"languageCode"`
-			Name         string `json:"name"`
-		}{
-			LanguageCode: "en-US",
-			Name:         "en-US-Journey-F",
-		},
+		Voice: voice_,
 		AudioConfig: struct {
 			AudioEncoding string `json:"audioEncoding"`
 		}{
@@ -175,10 +207,7 @@ type TtsPayload struct {
 	Input struct {
 		Text string `json:"text"`
 	} `json:"input"`
-	Voice struct {
-		LanguageCode string `json:"languageCode"`
-		Name         string `json:"name"`
-	} `json:"voice"`
+	Voice       voice `json:"voice"`
 	AudioConfig struct {
 		AudioEncoding string `json:"audioEncoding"`
 	} `json:"audioConfig"`

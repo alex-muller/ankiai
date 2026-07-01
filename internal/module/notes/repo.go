@@ -20,12 +20,12 @@ func (a Repo) Add(ctx context.Context, card Note) error {
 		INSERT INTO notes (
 			word_id, lemma, card_hash, target_word_form, marked_sentence,
 			translation, grammar_note, synonyms, part_of_speech,
-			definition_en, definition_ru, translation_ru,
+			definition_en, definition_ru, translation_ru, definition_pl, translation_pl,
 			audio_filename, audio_base64, status
 		) VALUES (
 			:word_id, :lemma, :card_hash, :target_word_form, :marked_sentence,
 			:translation, :grammar_note, :synonyms, :part_of_speech,
-			:definition_en, :definition_ru, :translation_ru,
+			:definition_en, :definition_ru, :translation_ru, :definition_pl, :translation_pl,
 			:audio_filename, :audio_base64, :status
 		)`, card)
 	return err
@@ -88,6 +88,13 @@ func (a Repo) UpdateFrequencies(ctx context.Context, words map[string]float64) e
 
 func (a Repo) AddAudio(ctx context.Context, noteId int64, audioContent, audioFilename string) error {
 	q := "UPDATE notes SET audio_filename = ?, audio_base64 = ?, status = ? WHERE id = ?"
+
+	_, err := a.db.ExecContext(ctx, q, audioFilename, audioContent, ExportPending, noteId)
+	return err
+}
+
+func (a Repo) AddAudioPl(ctx context.Context, noteId int64, audioContent, audioFilename string) error {
+	q := "UPDATE notes SET audio_filename_pl = ?, audio_base64_pl = ?, status = ? WHERE id = ?"
 
 	_, err := a.db.ExecContext(ctx, q, audioFilename, audioContent, ExportPending, noteId)
 	return err

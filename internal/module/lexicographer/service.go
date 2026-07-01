@@ -118,13 +118,10 @@ func (a *Service) processWord(ctx context.Context, word_ word.Word) error {
 
 	// Parse prompt template
 	var requestData GeminiRequest
-	if err := json.Unmarshal([]byte(prompt(word_.Word)), &requestData); err != nil {
+	if err := json.Unmarshal([]byte(promptWithPl(word_.Word)), &requestData); err != nil {
 		l.Error("failed to parse prompt template", slog.String("error", err.Error()))
 		return err
 	}
-
-	// Inject word into request
-	requestData.Contents[0].Parts[0].Text = "Проанализируй выражение: '" + word_.Word + "'"
 
 	// Marshal request to JSON
 	jsonData, err := json.Marshal(requestData)
@@ -194,7 +191,7 @@ type GeminiRequest struct {
 	GenerationConfig map[string]interface{} `json:"generationConfig"`
 }
 
-func prompt(word string) string {
+func promptOld(word string) string {
 	return `
 {
   "systemInstruction": {
@@ -244,6 +241,68 @@ func prompt(word string) string {
               }
             },
             "required": ["part_of_speech", "translation_ru", "definition_en", "definition_ru", "synonyms", "examples"]
+          }
+        }
+      },
+      "required": ["lemma", "senses"]
+    }
+  }
+}`
+}
+
+func promptWithPl(word string) string {
+	return `
+{
+  "systemInstruction": {
+    "parts": [
+      {
+        "text": "Ты — профессиональный лексикограф и эксперт по иммерсивному изучению языков. Твоя задача — проанализировать английское слово или фразу и вернуть структурированные данные. Правила:\n1. Полисемия и Часть речи: Покрой основные смыслы и обязательно укажи часть речи (part_of_speech) на английском.\n2. Перевод: Для каждого смысла дай точный перевод самого слова или фразы на русский язык (translation_ru) и на польский язык (translation_pl). Перевод на польский должен быть максимально естественным и идиоматичным для носителей языка (избегай буквального перевода английских конструкций).\n3. Примеры и Морфологическое разнообразие: Сгенерируй столько примеров, сколько нужно, чтобы покрыть морфологическое разнообразие слова. КРИТИЧЕСКИ ВАЖНО: целевое слово должно менять свою форму от примера к примеру. В 'grammar_note' кратко укажи использованную форму СТРОГО НА АНГЛИЙСКОМ ЯЗЫКЕ (например: Past Simple, Plural Noun, Gerund). Для каждого примера дай перевод предложения на русский (translation) и естественный перевод на польский (translation_pl).\n4. ДЕРИВАЦИЯ (Производные слова): Если целевое слово образует часто используемые производные, обязательно выдели их в отдельные смыслы (senses) с указанием соответствующей части речи.\n5. ВАЖНО (РАЗМЕТКА): Целевое слово или фраза в каждом примере должны встречаться строго один раз. Обязательно выделяй двойными звездочками ИМЕННО ту морфологическую форму, которая использована в тексте. Не выделяй слово в переводе.\n6. Форма слова: Для каждого примера выведи в поле 'target_word_form' ту точную форму слова/фразы, которая была использована.\n7. Определения и Синонимы: Для каждого смысла напиши простое и понятное толкование на английском (definition_en), краткий перевод на русский (definition_ru), естественное толкование смысла на польском языке (definition_pl) и 2-3 синонима на английском."
+      }
+    ]
+  },
+  "contents": [
+    {
+      "parts": [
+        {
+          "text": "Проанализируй выражение: '` + word + `'"
+        }
+      ]
+    }
+  ],
+  "generationConfig": {
+    "responseMimeType": "application/json",
+    "responseSchema": {
+      "type": "OBJECT",
+      "properties": {
+        "lemma": { "type": "STRING" },
+        "senses": {
+          "type": "ARRAY",
+          "items": {
+            "type": "OBJECT",
+            "properties": {
+              "part_of_speech": { "type": "STRING", "description": "e.g., noun, verb, adjective" },
+              "translation_ru": { "type": "STRING", "description": "Точный перевод самого слова на русский" },
+              "translation_pl": { "type": "STRING", "description": "Naturalny i idiomatyczny przekład słowa na język polski" },
+              "definition_en": { "type": "STRING", "description": "Clear English explanation of the meaning" },
+              "definition_ru": { "type": "STRING", "description": "Kratkoe tolkovanie smysla na russkom" },
+              "definition_pl": { "type": "STRING", "description": "Krótkie i zrozumiałe wyjaśnienie znaczenia po polsku" },
+              "synonyms": { "type": "ARRAY", "items": { "type": "STRING" } },
+              "examples": {
+                "type": "ARRAY",
+                "items": {
+                  "type": "OBJECT",
+                  "properties": {
+                    "grammar_note": { "type": "STRING", "description": "e.g., Past Simple (V2), Present Continuous, Plural" },
+                    "target_word_form": { "type": "STRING", "description": "Точная форма слова, использованная в примере" },
+                    "marked_sentence": { "type": "STRING", "description": "Предложение с разметкой **word**" },
+                    "translation": { "type": "STRING", "description": "Перевод предложения на русский" },
+                    "translation_pl": { "type": "STRING", "description": "Naturalne tłumaczenie całego zdania na język polski" }
+                  },
+                  "required": ["grammar_note", "target_word_form", "marked_sentence", "translation", "translation_pl"]
+                }
+              }
+            },
+            "required": ["part_of_speech", "translation_ru", "translation_pl", "definition_en", "definition_ru", "definition_pl", "synonyms", "examples"]
           }
         }
       },

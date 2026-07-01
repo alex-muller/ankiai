@@ -119,6 +119,8 @@ func (a Maker) processCardJson(ctx context.Context, cardJson CardJson, word_ wor
 				DefinitionEn:   sens.DefinitionEn,
 				DefinitionRu:   sens.DefinitionRu,
 				TranslationRu:  example.Translation,
+				DefinitionPl:   sens.DefinitionPl,
+				TranslationPl:  example.TranslationPl,
 				AudioFilename:  "",
 				AudioBase64:    "",
 				Status:         0,
@@ -156,12 +158,14 @@ type CardJson struct {
 		TranslationRu string   `json:"translation_ru"`
 		DefinitionEn  string   `json:"definition_en"`
 		DefinitionRu  string   `json:"definition_ru"`
+		DefinitionPl  string   `json:"definition_pl"`
 		Synonyms      []string `json:"synonyms"`
 		Examples      []struct {
 			GrammarNote    string `json:"grammar_note"`
 			TargetWordForm string `json:"target_word_form"`
 			MarkedSentence string `json:"marked_sentence"`
 			Translation    string `json:"translation"`
+			TranslationPl  string `json:"translation_pl"`
 		} `json:"examples"`
 	} `json:"senses"`
 }
