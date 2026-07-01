@@ -1,3 +1,5 @@
+-- +goose Up
+-- +goose StatementBegin
 alter table notes
     add definition_pl text default '' not null;
 
@@ -9,3 +11,4 @@ alter table notes
 
 alter table notes
     add audio_base64_pl text default '' not null;
+-- +goose StatementEnd

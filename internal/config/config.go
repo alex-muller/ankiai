@@ -27,7 +27,7 @@ func Get() Config {
 	}
 
 	return Config{
-		DBPath:           `tmp/anki_vocabulary.bak.db`,
+		DBPath:           `tmp/anki_vocabulary.db`,
 		MigrationsPath:   `migrations`,
 		GeminiApiKey:     os.Getenv("GEMINI_API_KEY"),
 		TtsApiKey:        os.Getenv("GOOGLE_TTS_API_KEY"),
