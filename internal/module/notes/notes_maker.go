@@ -50,7 +50,7 @@ func (a Maker) Run(ctx context.Context) {
 }
 
 func (a Maker) run(ctx context.Context) error {
-	addedWords, err := a.wordsRepo.GetByStatus(ctx, word.StatusRaw)
+	addedWords, err := a.wordsRepo.GetForExamples(ctx, word.StatusRaw)
 	if err != nil {
 		return fmt.Errorf(`get words: %w`, err)
 	}

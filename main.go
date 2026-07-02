@@ -52,7 +52,7 @@ func main() {
 	lex := lexicographer.New(wordRepo, conf.GeminiApiKey)
 
 	// Frequency service
-	frequency := frequency.NewFrequency(notesRepo)
+	frequency := frequency.NewFrequency(notesRepo, wordRepo)
 
 	// Notes maker
 	notesMaker := notes.NewMaker(notesRepo, wordRepo)

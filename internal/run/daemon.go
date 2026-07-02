@@ -24,10 +24,11 @@ func Daemon(
 	l.Info("daemon started")
 
 	go telegram.Run(ctx)
-	go lex.RunDaemon(ctx)
-	go notesMaker.Run(ctx)
 	go frequency.Run(ctx)
-	go ttsWorker.Run(ctx)
+	go lex.RunDaemon(ctx)
+	// go notesMaker.Run(ctx)
+	// go frequency.Run(ctx)
+	// go ttsWorker.Run(ctx)
 
 	<-ctx.Done()
 }

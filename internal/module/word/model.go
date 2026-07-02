@@ -5,9 +5,10 @@ import "time"
 type Status int
 
 const (
-	StatusNew          Status = 0
-	StatusRaw          Status = 1
-	StatusCardsCreated Status = 2
+	StatusNew            Status = 0
+	StatusAddedFrequency Status = 1
+	StatusRaw            Status = 2
+	StatusCardsCreated   Status = 3
 )
 
 type Word struct {
@@ -15,6 +16,7 @@ type Word struct {
 	Word      string    `db:"word"`
 	Status    Status    `db:"status"`
 	RawJSON   string    `db:"raw_json"`
+	Frequency float64   `db:"frequency"`
 	ErrorLog  string    `db:"error_log"`
 	CreatedAt time.Time `db:"created_at"`
 }

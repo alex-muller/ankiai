@@ -21,6 +21,15 @@ func CleanWord(text string) string {
 	return strings.Join(words, " ")
 }
 
+func CleanPhraseAndSplit(text string) []string {
+	var out []string
+	words := strings.Split(text, " ")
+	for _, word := range words {
+		out = append(out, CleanWord(word))
+	}
+	return out
+}
+
 func CleanWords(text []string) []string {
 	var out []string
 	for _, word := range text {

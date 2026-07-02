@@ -35,14 +35,46 @@ func (a Repository) Add(ctx context.Context, words []string) ([]string, error) {
 	return output, nil
 }
 
+func (a Repository) FindManyUniqueWordsByStatus(ctx context.Context, status Status, limit int) ([]string, error) {
+	var out = make([]string, 0, limit)
+
+	err := a.db.SelectContext(ctx, &out, "SELECT DISTINCT word FROM words WHERE status = ? LIMIT ?", status, limit)
+	if err != nil {
+		return nil, fmt.Errorf(`query: %w`, err)
+	}
+
+	return out, err
+}
+
+func (a Repository) UpdateFrequenciesByPhrase(ctx context.Context, words map[string]float64) error {
+	if len(words) == 0 {
+		return nil
+	}
+
+	const query = `
+		UPDATE words
+		SET frequency = ?, status = ?
+		WHERE word = ?
+	`
+
+	for word, freq := range words {
+		_, err := a.db.ExecContext(ctx, query, freq, StatusAddedFrequency, word)
+		if err != nil {
+			return fmt.Errorf(`update frequency for "%s": %w`, word, err)
+		}
+	}
+
+	return nil
+}
+
 func (a Repository) Update(ctx context.Context, w Word) error {
 	query := `UPDATE words SET status = :status, raw_json = :raw_json, error_log = :error_log WHERE id = :id`
 	_, err := a.db.NamedExecContext(ctx, query, w)
 	return err
 }
 
-func (a Repository) GetByStatus(ctx context.Context, status Status) ([]Word, error) {
-	query := "SELECT * FROM words WHERE status = $1 ORDER BY id ASC"
+func (a Repository) GetForExamples(ctx context.Context, status Status) ([]Word, error) {
+	query := "SELECT * FROM words WHERE status = $1 ORDER BY frequency DESC"
 	rows, err := a.db.QueryxContext(ctx, query, status)
 	if err != nil {
 		return nil, err

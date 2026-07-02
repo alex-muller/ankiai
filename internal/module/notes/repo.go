@@ -42,6 +42,18 @@ func (a Repo) FindManyUniqueTargetWordsByStatus(ctx context.Context, status Stat
 	return out, err
 }
 
+// Deprecated.
+func (a Repo) FindManyUniqueLemmaWordsByStatus(ctx context.Context, status Status, limit int) ([]string, error) {
+	var out = make([]string, 0, limit)
+
+	err := a.db.SelectContext(ctx, &out, "SELECT DISTINCT lemma FROM notes WHERE status = ? LIMIT ?", status, limit)
+	if err != nil {
+		return nil, fmt.Errorf(`query: %w`, err)
+	}
+
+	return out, err
+}
+
 func (a Repo) GetManyByStatus(ctx context.Context, status Status, limit int) ([]Note, error) {
 	var limitStr = ``
 	if limit > 0 {
@@ -65,7 +77,7 @@ func (a Repo) GetManyByStatus(ctx context.Context, status Status, limit int) ([]
 	return notes, nil
 }
 
-func (a Repo) UpdateFrequencies(ctx context.Context, words map[string]float64) error {
+func (a Repo) UpdateFrequenciesByTargetWord(ctx context.Context, words map[string]float64) error {
 	if len(words) == 0 {
 		return nil
 	}
@@ -74,6 +86,27 @@ func (a Repo) UpdateFrequencies(ctx context.Context, words map[string]float64) e
 		UPDATE notes
 		SET frequency = ?, status = ?
 		WHERE target_word_form = ?
+	`
+
+	for word, freq := range words {
+		_, err := a.db.ExecContext(ctx, query, freq, GenerateAudioPending, word)
+		if err != nil {
+			return fmt.Errorf(`update frequency for "%s": %w`, word, err)
+		}
+	}
+
+	return nil
+}
+
+func (a Repo) UpdateFrequenciesByLemma(ctx context.Context, words map[string]float64) error {
+	if len(words) == 0 {
+		return nil
+	}
+
+	const query = `
+		UPDATE notes
+		SET frequency = ?, status = ?
+		WHERE lemma = ?
 	`
 
 	for word, freq := range words {

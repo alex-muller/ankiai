@@ -52,20 +52,18 @@ func (a *Service) run(ctx context.Context, asDaemon bool) {
 		for {
 			select {
 			case <-ctx.Done():
-				close(ch)
 				return
 			default:
 				a.log.Info(`try to get words`)
-				addedWords, err := a.repository.GetByStatus(ctx, word.StatusNew)
+				addedWords, err := a.repository.GetForExamples(ctx, word.StatusAddedFrequency)
 				if err != nil {
 					a.log.Error(`get words to process`, slog.String("error", err.Error()))
-					close(ch)
 					return
 				}
 
 				if len(addedWords) == 0 {
 					if asDaemon {
-						time.Sleep(1 * time.Minute)
+						time.Sleep(1 * time.Second)
 						continue
 					}
 					return
@@ -131,7 +129,7 @@ func (a *Service) processWord(ctx context.Context, word_ word.Word) error {
 	}
 
 	// Create HTTP request
-	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + a.apiKey
+	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + a.apiKey // TODO модель ИИ в конфиг
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
