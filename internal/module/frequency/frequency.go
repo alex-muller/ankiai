@@ -91,7 +91,10 @@ func (a *FrequencyService) RunOnceOnPhrases(ctx context.Context, phrases []strin
 	}
 
 	for _, word := range words {
-		freq := averagesForEachWord[word]
+		freq, ok := averagesForEachWord[word]
+		if !ok {
+			continue
+		}
 
 		for _, phr := range wordsMap[word] {
 			if currentFreq := lemmaMap[phr]; currentFreq > freq || currentFreq == 0 {
