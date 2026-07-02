@@ -9,6 +9,8 @@ const (
 	StatusAddedFrequency Status = 1
 	StatusRaw            Status = 2
 	StatusCardsCreated   Status = 3
+
+	StatusTmpFrequencyRequired Status = 101
 )
 
 type Word struct {

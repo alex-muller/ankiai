@@ -86,6 +86,10 @@ func (a *FrequencyService) RunOnceOnPhrases(ctx context.Context, phrases []strin
 
 	lemmaMap := make(map[string]float64)
 
+	for _, p := range phrases {
+		lemmaMap[p] = 0
+	}
+
 	for _, word := range words {
 		freq := averagesForEachWord[word]
 

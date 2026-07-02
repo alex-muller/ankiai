@@ -67,6 +67,36 @@ func (a Repository) UpdateFrequenciesByPhrase(ctx context.Context, words map[str
 	return nil
 }
 
+func (a Repository) UpdateWordsForFrequencyGet(ctx context.Context) error {
+	const query = `
+		UPDATE words
+		SET status = ?
+		WHERE frequency = ?
+	`
+
+	_, err := a.db.ExecContext(ctx, query, StatusTmpFrequencyRequired, 0)
+	if err != nil {
+		return fmt.Errorf(`update frequency TMP : %w`, err)
+	}
+
+	return nil
+}
+
+func (a Repository) CountByStatus(ctx context.Context, status Status) (int, error) {
+	const query = `
+		SELECT count(*) FROM words WHERE status = ?
+	`
+
+	var out []int
+
+	err := a.db.SelectContext(ctx, &out, query, status)
+	if err != nil {
+		return 0, fmt.Errorf(`query: %w`, err)
+	}
+
+	return out[0], nil
+}
+
 func (a Repository) Update(ctx context.Context, w Word) error {
 	query := `UPDATE words SET status = :status, raw_json = :raw_json, error_log = :error_log WHERE id = :id`
 	_, err := a.db.NamedExecContext(ctx, query, w)

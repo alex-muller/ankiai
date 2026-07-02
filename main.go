@@ -17,6 +17,7 @@ import (
 	"github.com/alex-muller/ankiai/internal/module/notes"
 	"github.com/alex-muller/ankiai/internal/module/telegram"
 	"github.com/alex-muller/ankiai/internal/module/tts"
+	"github.com/alex-muller/ankiai/internal/module/update"
 	"github.com/alex-muller/ankiai/internal/module/word"
 	"github.com/alex-muller/ankiai/internal/run"
 )
@@ -69,6 +70,9 @@ func main() {
 	// Telegram
 	telegramService := telegram.New(conf, importer)
 
+	// Updater
+	updater := update.New(frequency, wordRepo)
+
 	command := os.Args[1]
 
 	switch command {
@@ -90,7 +94,10 @@ func main() {
 	case "export":
 		run.Export(ctx, exporter)
 	case "update":
-		run.Update(ctx, exporter)
+		err = updater.Run(ctx)
+		if err != nil {
+			log.Fatalf(`run update "%s"`, err)
+		}
 	case "telegram":
 		run.Telegram(ctx, telegramService)
 
