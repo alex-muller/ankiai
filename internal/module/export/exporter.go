@@ -106,6 +106,9 @@ func (a Exporter) runExportCards(ctx context.Context) error {
 
 	for _, note := range notes {
 		err = a.exportOneNote(ctx, note)
+		if err != nil {
+			return fmt.Errorf(`export one: %w`, err)
+		}
 	}
 
 	return nil
@@ -148,7 +151,6 @@ func (a Exporter) exportNote(ctx context.Context, note notes.Note) (int64, error
 					DefinitionEn:   note.DefinitionEn,
 					DefinitionRu:   note.DefinitionRu,
 					TranslationRu:  note.TranslationRu,
-					Audio:          ``,
 					Frequency:      strconv.FormatFloat(note.Frequency, 'f', -1, 64),
 				},
 				Options: Options{
@@ -167,6 +169,12 @@ func (a Exporter) exportNote(ctx context.Context, note notes.Note) (int64, error
 						Filename: note.AudioFilename,
 						SkipHash: "",
 						Fields:   []string{"audio"},
+					},
+					{
+						Data:     note.AudioBase64Pl,
+						Filename: note.AudioFilenamePl,
+						SkipHash: "",
+						Fields:   []string{"audio_pl"},
 					},
 				},
 			},
@@ -357,6 +365,8 @@ func (a Exporter) createModel(ctx context.Context) error {
 				"definition_en",
 				"definition_ru",
 				"translation_ru",
+				"definition_pl",
+				"translation_pl",
 				"audio",
 				"frequency",
 			},

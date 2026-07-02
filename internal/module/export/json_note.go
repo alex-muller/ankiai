@@ -27,7 +27,8 @@ type Fields struct {
 	DefinitionEn   string `json:"definition_en,omitempty"`
 	DefinitionRu   string `json:"definition_ru,omitempty"`
 	TranslationRu  string `json:"translation_ru,omitempty"`
-	Audio          string `json:"audio,omitempty"`
+	DefinitionPl   string `json:"definition_pl,omitempty"`
+	TranslationPl  string `json:"translation_pl,omitempty"`
 	Frequency      string `json:"frequency,omitempty"`
 }
 
