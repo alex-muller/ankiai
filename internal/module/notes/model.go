@@ -5,10 +5,9 @@ import "time"
 type Status int
 
 const (
-	FrequencyPending     Status = 0
-	GenerateAudioPending Status = 1
-	ExportPending        Status = 2
-	Exported             Status = 3
+	GenerateAudioPending Status = 0
+	ExportPending        Status = 1
+	Exported             Status = 2
 )
 
 type Note struct {

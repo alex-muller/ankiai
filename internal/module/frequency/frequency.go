@@ -102,65 +102,6 @@ func (a *FrequencyService) runOnceOnWords(ctx context.Context) error {
 	return nil
 }
 
-// Deprecated.
-func (a *FrequencyService) runOnceOnNotes(ctx context.Context) error {
-	phrases, err := a.notesRepo.FindManyUniqueLemmaWordsByStatus(ctx, notes.FrequencyPending, 10)
-	if err != nil {
-		a.log.Error(`find cards by status "created" failed`, slog.String("error", err.Error()))
-		return err
-	}
-
-	if len(phrases) == 0 {
-		return nil
-	}
-
-	wordsMap := a.cleanWords(phrases)
-
-	var words []string
-	for w := range wordsMap {
-		words = append(words, w)
-	}
-
-	rawHtml, err := a.makeRequest(ctx, words, 1990, 2022)
-	if err != nil {
-		return fmt.Errorf(`make request: %w`, err)
-	}
-
-	averagesForEachWord, err := a.getAverages(rawHtml)
-	if err != nil {
-		return fmt.Errorf(`get averages: %w`, err)
-	}
-
-	if len(averagesForEachWord) == 0 {
-		return fmt.Errorf(`can't calculate averages`)
-	}
-
-	lemmaMap := make(map[string]float64)
-
-	for _, word := range words {
-		freq := averagesForEachWord[word]
-
-		for _, phr := range wordsMap[word] {
-			if currentFreq := lemmaMap[phr]; currentFreq > freq {
-				lemmaMap[phr] = freq
-			}
-		}
-	}
-
-	err = a.notesRepo.UpdateFrequenciesByLemma(ctx, lemmaMap)
-	if err != nil {
-		return fmt.Errorf(`update frequencies: %w`, err)
-	}
-
-	fmt.Println(fmt.Sprintf("Calculated Ngram Averages: %v", words))
-
-	return nil
-}
-
-func (a *FrequencyService) makeFreqForLemma() {
-
-}
-
 func (a *FrequencyService) makeRequest(ctx context.Context, words []string, fromYear, toYear int) (string, error) {
 	if len(words) == 0 {
 		return ``, nil

@@ -26,9 +26,8 @@ func Daemon(
 	go telegram.Run(ctx)
 	go frequency.Run(ctx)
 	go lex.RunDaemon(ctx)
-	// go notesMaker.Run(ctx)
-	// go frequency.Run(ctx)
-	// go ttsWorker.Run(ctx)
+	go notesMaker.Run(ctx)
+	go ttsWorker.Run(ctx)
 
 	<-ctx.Done()
 }

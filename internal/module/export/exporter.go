@@ -150,11 +150,15 @@ func (a Exporter) exportNote(ctx context.Context, note notes.Note) (int64, error
 					PartOfSpeech:   note.PartOfSpeech,
 					DefinitionEn:   note.DefinitionEn,
 					DefinitionRu:   note.DefinitionRu,
+					DefinitionPl:   note.DefinitionPl,
+					TranslationPl:  note.TranslationPl,
 					TranslationRu:  note.TranslationRu,
+					Audio:          ``,
+					AudioPl:        ``,
 					Frequency:      strconv.FormatFloat(note.Frequency, 'f', -1, 64),
 				},
 				Options: Options{
-					AllowDuplicate: false,
+					AllowDuplicate: true,
 					DuplicateScope: "",
 					DuplicateScopeOptions: DuplicateScopeOptions{
 						DeckName:       "",
@@ -184,6 +188,10 @@ func (a Exporter) exportNote(ctx context.Context, note notes.Note) (int64, error
 	response, err := a.makeRequest(ctx, ankiRequest_)
 	if err != nil {
 		return 0, fmt.Errorf(`make request: %w`, err)
+	}
+
+	if response.Error != `` {
+		return 0, fmt.Errorf(`response error: %s`, response.Error)
 	}
 
 	ankiId, err := strconv.Atoi(string(response.Result))
