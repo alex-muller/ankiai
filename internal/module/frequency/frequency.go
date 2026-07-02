@@ -55,6 +55,10 @@ func (a *FrequencyService) runOnceOnWords(ctx context.Context) error {
 		return err
 	}
 
+	return a.RunOnceOnPhrases(ctx, phrases)
+}
+
+func (a *FrequencyService) RunOnceOnPhrases(ctx context.Context, phrases []string) error {
 	if len(phrases) == 0 {
 		return nil
 	}

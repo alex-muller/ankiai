@@ -34,4 +34,6 @@ type Note struct {
 	Status          Status    `db:"status"`
 	Frequency       float64   `db:"frequency"`
 	CreatedAt       time.Time `db:"created_at"`
+	UpdatedAt       time.Time `db:"updated_at"`
+	ExportedAt      time.Time `db:"exported_at"`
 }
