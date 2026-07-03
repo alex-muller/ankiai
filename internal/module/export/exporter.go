@@ -77,7 +77,7 @@ func (a Exporter) Update(ctx context.Context) error {
 			note.AnkiNoteID = id
 		}
 
-		_, err = a.updateNote(ctx, notes_[0])
+		_, err = a.updateNote(ctx, note)
 		if err != nil {
 			return fmt.Errorf("update note: %w", err)
 		}
@@ -92,7 +92,31 @@ func (a Exporter) Update(ctx context.Context) error {
 }
 
 func (a Exporter) findAnkiNoteId(ctx context.Context, note notes.Note) (int64, error) {
-	panic(`implement me`)
+	req := ankiRequest{
+		Action:  "findNotes",
+		Version: 6,
+		Params: findParams{
+			Query: fmt.Sprintf("deck:%s id:%d", a.conf.AnkiDeck, note.ID),
+		},
+	}
+
+	response, err := a.makeRequest(ctx, req)
+	if err != nil {
+		return 0, fmt.Errorf(`make request: %w`, err)
+	}
+
+	var idList []int64
+
+	err = json.Unmarshal(response.Result, &idList)
+	if err != nil {
+		return 0, fmt.Errorf(`unmarshal response: %w`, err)
+	}
+
+	if len(idList) != 1 {
+		return 0, fmt.Errorf(`expected 1 id, but got %d`, len(idList))
+	}
+
+	return idList[0], nil
 }
 
 func (a Exporter) runExportCards(ctx context.Context) error {
@@ -201,7 +225,7 @@ func (a Exporter) exportNote(ctx context.Context, note notes.Note, action string
 	}
 
 	ankiId, err := strconv.Atoi(string(response.Result))
-	if err != nil {
+	if err != nil && action == `addNote` {
 		return 0, fmt.Errorf(`parse ankiId: %w`, err)
 	}
 
@@ -477,6 +501,10 @@ type ankiRequest struct {
 	Action  string `json:"action"`
 	Version int    `json:"version"`
 	Params  any    `json:"params,omitempty"`
+}
+
+type findParams struct {
+	Query string `json:"query"`
 }
 
 type ankiResponse struct {
