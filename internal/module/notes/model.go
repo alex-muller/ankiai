@@ -1,6 +1,9 @@
 package notes
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type Status int
 
@@ -36,4 +39,8 @@ type Note struct {
 	CreatedAt       time.Time  `db:"created_at"`
 	UpdatedAt       time.Time  `db:"updated_at"`
 	ExportedAt      *time.Time `db:"exported_at"`
+}
+
+func (a Note) GetSentenceEn() string {
+	return strings.ReplaceAll(a.MarkedSentence, "**", "")
 }

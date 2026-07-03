@@ -48,7 +48,7 @@ func (a Exporter) Run(ctx context.Context) error {
 }
 
 func (a Exporter) Update(ctx context.Context) error {
-	notesToUpdate, err_ := a.notesRepo.FindManyForUpdate(ctx, 0)
+	notesToUpdate, err_ := a.notesRepo.FindManyForAnkiUpdate(ctx, 0)
 	if err_ != nil {
 		return fmt.Errorf(`find notes to update: %w`, err_)
 	}
@@ -58,7 +58,7 @@ func (a Exporter) Update(ctx context.Context) error {
 
 	for {
 		// Get notes for update
-		notes_, err := a.notesRepo.FindManyForUpdate(ctx, 1)
+		notes_, err := a.notesRepo.FindManyForAnkiUpdate(ctx, 1)
 		if err != nil {
 			return fmt.Errorf("find notes: %w", err)
 		}

@@ -71,7 +71,7 @@ func main() {
 	telegramService := telegram.New(conf, importer)
 
 	// Updater
-	updater := update.New(frequency, wordRepo)
+	updater := update.New(frequency, wordRepo, notesRepo, lex)
 
 	command := os.Args[1]
 
