@@ -268,7 +268,17 @@ func (a *Service) GetPlTranslate(
 
 	resp, err := a.makeRequest(ctx, req)
 
-	_ = resp
+	var respStruct PlResponse
+
+	err = json.Unmarshal([]byte(resp), &respStruct)
+	if err != nil {
+		return out, fmt.Errorf("unmarshal response: %w", err)
+	}
+
+	err = json.Unmarshal([]byte(respStruct.Candidates[0].Content.Parts[0].Text), &out)
+	if err != nil {
+		return out, fmt.Errorf("unmarshal text: %w", err)
+	}
 
 	return out, nil
 }
@@ -309,4 +319,30 @@ func promptOnlyPlExamplePatch(targetWordForm, exampleEn, exampleTranslationRu, d
 type PlPatchResponse struct {
 	DefinitionPl         string `json:"definition_pl"`
 	ExampleTranslationPl string `json:"example_translation_pl"`
+}
+
+type PlResponse struct {
+	Candidates []struct {
+		Content struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+			Role string `json:"role"`
+		} `json:"content"`
+		FinishReason string `json:"finishReason"`
+		Index        int    `json:"index"`
+	} `json:"candidates"`
+	UsageMetadata struct {
+		PromptTokenCount     int `json:"promptTokenCount"`
+		CandidatesTokenCount int `json:"candidatesTokenCount"`
+		TotalTokenCount      int `json:"totalTokenCount"`
+		PromptTokensDetails  []struct {
+			Modality   string `json:"modality"`
+			TokenCount int    `json:"tokenCount"`
+		} `json:"promptTokensDetails"`
+		ThoughtsTokenCount int    `json:"thoughtsTokenCount"`
+		ServiceTier        string `json:"serviceTier"`
+	} `json:"usageMetadata"`
+	ModelVersion string `json:"modelVersion"`
+	ResponseId   string `json:"responseId"`
 }
