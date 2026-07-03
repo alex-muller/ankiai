@@ -99,7 +99,7 @@ func (a Repo) FindManyForAnkiUpdate(ctx context.Context, limit int) ([]Note, err
 	return notes, nil
 }
 
-func (a Repo) FindManyForPolishUpdate(ctx context.Context, limit int) ([]Note, error) {
+func (a Repo) FindManyForPolishTranslateUpdate(ctx context.Context, limit int) ([]Note, error) {
 	var limitStr = ``
 	if limit > 0 {
 		limitStr = fmt.Sprintf(` LIMIT %d`, limit)
@@ -109,6 +109,36 @@ func (a Repo) FindManyForPolishUpdate(ctx context.Context, limit int) ([]Note, e
 	SELECT n.*, w.frequency FROM notes n 
 		LEFT JOIN words w ON n.word_id = w.id 
 	WHERE n.translation_pl = '' 
+	ORDER BY w.frequency DESC%s`,
+		limitStr)
+	rows, err := a.db.QueryxContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var notes []Note
+	for rows.Next() {
+		var word Note
+		if err := rows.StructScan(&word); err != nil {
+			return nil, fmt.Errorf(`scan: %w`, err)
+		}
+		notes = append(notes, word)
+	}
+	return notes, nil
+}
+
+func (a Repo) FindManyForPolishTTSUpdate(ctx context.Context, limit int) ([]Note, error) {
+	var limitStr = ``
+	if limit > 0 {
+		limitStr = fmt.Sprintf(` LIMIT %d`, limit)
+	}
+
+	query := fmt.Sprintf(`
+	SELECT n.*, w.frequency FROM notes n 
+		LEFT JOIN words w ON n.word_id = w.id 
+	WHERE n.audio_filename_pl = ''
+		AND n.audio_base64_pl = ''
+		AND n.translation_pl <> ''
 	ORDER BY w.frequency DESC%s`,
 		limitStr)
 	rows, err := a.db.QueryxContext(ctx, query)

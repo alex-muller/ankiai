@@ -65,7 +65,7 @@ func (a Service) Run(ctx context.Context) error {
 }
 
 func (a Service) updatePlTranslate(ctx context.Context) error {
-	notes_, err := a.notesRepo.FindManyForPolishUpdate(ctx, 0)
+	notes_, err := a.notesRepo.FindManyForPolishTranslateUpdate(ctx, 0)
 	if err != nil {
 		return fmt.Errorf(`find notes: %w`, err)
 	}
