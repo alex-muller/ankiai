@@ -32,6 +32,34 @@ func (a Repo) Add(ctx context.Context, card Note) error {
 	return err
 }
 
+func (a Repo) Update(ctx context.Context, card Note) error {
+	_, err := a.db.NamedExecContext(ctx, `
+		UPDATE notes SET 
+			word_id = :word_id, 
+			lemma = :lemma,
+			card_hash = :card_hash,
+			target_word_form = :target_word_form,
+			marked_sentence = :marked_sentence,
+			translation = :translation,
+			grammar_note = :grammar_note,
+			synonyms = :synonyms,
+			part_of_speech = :part_of_speech,
+			definition_en = :definition_en, 
+			definition_ru = :definition_ru,
+			translation_ru = :translation_ru,
+			definition_pl = :definition_pl,
+			translation_pl = :translation_pl,
+			audio_filename = :audio_filename,
+			audio_base64 = :audio_base64,
+			audio_filename_pl = :audio_filename_pl,
+			audio_base64_pl = :audio_base64_pl,
+			created_at = :created_at,
+			updated_at = :updated_at,
+			status = :status
+		WHERE id = :id`, card)
+	return err
+}
+
 func (a Repo) FindManyUniqueTargetWordsByStatus(ctx context.Context, status Status, limit int) ([]string, error) {
 	var out = make([]string, 0, limit)
 

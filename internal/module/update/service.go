@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alex-muller/ankiai/internal/module/frequency"
 	"github.com/alex-muller/ankiai/internal/module/lexicographer"
 	"github.com/alex-muller/ankiai/internal/module/notes"
 	word2 "github.com/alex-muller/ankiai/internal/module/word"
+	"golang.org/x/sync/errgroup"
 )
 
 func New(
@@ -34,50 +36,109 @@ type Service struct {
 }
 
 func (a Service) Run(ctx context.Context) error {
-	err := a.updateFreq(ctx)
-	if err != nil {
-		return fmt.Errorf(`update freq: %w`, err)
-	}
+	group, ctx := errgroup.WithContext(ctx)
 
-	err = a.updatePlTranslate(ctx)
+	group.Go(func() error {
+		err := a.updateFreq(ctx)
+		if err != nil {
+			return fmt.Errorf(`update freq: %w`, err)
+		}
+		return nil
+	})
+
+	group.Go(func() error {
+		err := a.updatePlTranslate(ctx)
+		if err != nil {
+			return fmt.Errorf(`update pl translate: %w`, err)
+		}
+
+		return nil
+	})
+
+	err := group.Wait()
 	if err != nil {
-		return fmt.Errorf(`update pl translate: %w`, err)
+		return err
 	}
 
 	return nil
+
 }
 
 func (a Service) updatePlTranslate(ctx context.Context) error {
-	notes, err := a.notesRepo.FindManyForPolishUpdate(ctx, 0)
+	notes_, err := a.notesRepo.FindManyForPolishUpdate(ctx, 0)
 	if err != nil {
 		return fmt.Errorf(`find notes: %w`, err)
 	}
 
-	total := len(notes)
+	total := len(notes_)
 	var count int
 
-	for {
-		notes, err = a.notesRepo.FindManyForPolishUpdate(ctx, 1)
-		if err != nil {
-			return fmt.Errorf(`find note: %w`, err)
+	limitPerMinute := 100
+	workers := 10
+
+	ch := make(chan notes.Note)
+
+	go func() {
+		defer close(ch)
+		for _, note := range notes_ {
+			select {
+			case <-ctx.Done():
+				return
+			case ch <- note:
+			}
+
+			time.Sleep(time.Minute / time.Duration(limitPerMinute))
 		}
+	}()
 
-		if len(notes) == 0 {
-			break
-		}
+	wg := sync.WaitGroup{}
+	mu := sync.Mutex{}
 
-		note := notes[0]
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case n, ok := <-ch:
+					if !ok {
+						return
+					}
+					err = a.updatePlOneNote(ctx, n)
+					if err != nil {
+						panic(err)
+					}
 
-		translate, err := a.lex.GetPlTranslate(ctx, note.TargetWordForm, note.GetSentenceEn(), note.Translation, note.DefinitionEn, note.DefinitionRu)
-		if err != nil {
-			return fmt.Errorf(`get pl translate: %w`, err)
-		}
+					mu.Lock()
+					count++
+					mu.Unlock()
 
-		_ = translate
+					fmt.Printf("\rPL translate updated %d of %d", count, total)
+				}
+			}
+		}()
+	}
 
-		count++
+	wg.Wait()
 
-		fmt.Printf("\r Got PL translate %d of %d", count, total)
+	return nil
+}
+
+func (a Service) updatePlOneNote(ctx context.Context, n notes.Note) error {
+	translate, err := a.lex.GetPlTranslate(ctx, n.TargetWordForm, n.GetSentenceEn(), n.Translation, n.DefinitionEn, n.DefinitionRu)
+	if err != nil {
+		return fmt.Errorf(`get pl translate: %w`, err)
+	}
+
+	n.DefinitionPl = translate.DefinitionPl
+	n.TranslationPl = translate.ExampleTranslationPl
+	n.UpdatedAt = time.Now().UTC()
+
+	err = a.notesRepo.Update(ctx, n)
+	if err != nil {
+		return fmt.Errorf(`update pl note: %w`, err)
 	}
 
 	return nil
