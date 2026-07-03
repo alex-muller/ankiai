@@ -3,6 +3,7 @@ package notes
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -21,12 +22,12 @@ func (a Repo) Add(ctx context.Context, card Note) error {
 			word_id, lemma, card_hash, target_word_form, marked_sentence,
 			translation, grammar_note, synonyms, part_of_speech,
 			definition_en, definition_ru, translation_ru, definition_pl, translation_pl,
-			audio_filename, audio_base64, status
+			audio_filename, audio_base64, created_at, updated_at, status
 		) VALUES (
 			:word_id, :lemma, :card_hash, :target_word_form, :marked_sentence,
 			:translation, :grammar_note, :synonyms, :part_of_speech,
 			:definition_en, :definition_ru, :translation_ru, :definition_pl, :translation_pl,
-			:audio_filename, :audio_base64, :status
+			:audio_filename, :audio_base64, :created_at, :updated_at, :status
 		)`, card)
 	return err
 }
@@ -42,16 +43,32 @@ func (a Repo) FindManyUniqueTargetWordsByStatus(ctx context.Context, status Stat
 	return out, err
 }
 
-// Deprecated.
-func (a Repo) FindManyUniqueLemmaWordsByStatus(ctx context.Context, status Status, limit int) ([]string, error) {
-	var out = make([]string, 0, limit)
-
-	err := a.db.SelectContext(ctx, &out, "SELECT DISTINCT lemma FROM notes WHERE status = ? LIMIT ?", status, limit)
-	if err != nil {
-		return nil, fmt.Errorf(`query: %w`, err)
+func (a Repo) FindManyForUpdate(ctx context.Context, limit int) ([]Note, error) {
+	var limitStr = ``
+	if limit > 0 {
+		limitStr = fmt.Sprintf(` LIMIT %d`, limit)
 	}
 
-	return out, err
+	query := fmt.Sprintf(`
+	SELECT n.*, w.frequency FROM notes n 
+		LEFT JOIN words w ON n.word_id = w.id 
+	WHERE n.exported_at < n.updated_at 
+	ORDER BY w.frequency DESC%s`,
+		limitStr)
+	rows, err := a.db.QueryxContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var notes []Note
+	for rows.Next() {
+		var word Note
+		if err := rows.StructScan(&word); err != nil {
+			return nil, fmt.Errorf(`scan: %w`, err)
+		}
+		notes = append(notes, word)
+	}
+	return notes, nil
 }
 
 func (a Repo) GetManyByStatus(ctx context.Context, status Status, limit int) ([]Note, error) {
@@ -60,7 +77,7 @@ func (a Repo) GetManyByStatus(ctx context.Context, status Status, limit int) ([]
 		limitStr = fmt.Sprintf(` LIMIT %d`, limit)
 	}
 
-	query := fmt.Sprintf("SELECT * FROM notes WHERE status = $1 ORDER BY frequency DESC%s", limitStr)
+	query := fmt.Sprintf("SELECT n.*, w.frequency FROM notes n LEFT JOIN words w ON n.word_id = w.id WHERE n.status = $1 ORDER BY w.frequency DESC%s", limitStr)
 	rows, err := a.db.QueryxContext(ctx, query, status)
 	if err != nil {
 		return nil, err
@@ -77,64 +94,22 @@ func (a Repo) GetManyByStatus(ctx context.Context, status Status, limit int) ([]
 	return notes, nil
 }
 
-func (a Repo) UpdateFrequenciesByTargetWord(ctx context.Context, words map[string]float64) error {
-	if len(words) == 0 {
-		return nil
-	}
-
-	const query = `
-		UPDATE notes
-		SET frequency = ?, status = ?
-		WHERE target_word_form = ?
-	`
-
-	for word, freq := range words {
-		_, err := a.db.ExecContext(ctx, query, freq, GenerateAudioPending, word)
-		if err != nil {
-			return fmt.Errorf(`update frequency for "%s": %w`, word, err)
-		}
-	}
-
-	return nil
-}
-
-func (a Repo) UpdateFrequenciesByLemma(ctx context.Context, words map[string]float64) error {
-	if len(words) == 0 {
-		return nil
-	}
-
-	const query = `
-		UPDATE notes
-		SET frequency = ?, status = ?
-		WHERE lemma = ?
-	`
-
-	for word, freq := range words {
-		_, err := a.db.ExecContext(ctx, query, freq, GenerateAudioPending, word)
-		if err != nil {
-			return fmt.Errorf(`update frequency for "%s": %w`, word, err)
-		}
-	}
-
-	return nil
-}
-
 func (a Repo) AddAudio(ctx context.Context, noteId int64, audioContent, audioFilename string) error {
-	q := "UPDATE notes SET audio_filename = ?, audio_base64 = ?, status = ? WHERE id = ?"
+	q := "UPDATE notes SET audio_filename = ?, audio_base64 = ?, status = ?, updated_at = ?  WHERE id = ?"
 
-	_, err := a.db.ExecContext(ctx, q, audioFilename, audioContent, ExportPending, noteId)
+	_, err := a.db.ExecContext(ctx, q, audioFilename, audioContent, ExportPending, time.Now(), noteId)
 	return err
 }
 
 func (a Repo) AddAudioPl(ctx context.Context, noteId int64, audioContent, audioFilename string) error {
-	q := "UPDATE notes SET audio_filename_pl = ?, audio_base64_pl = ?, status = ? WHERE id = ?"
+	q := "UPDATE notes SET audio_filename_pl = ?, audio_base64_pl = ?, status = ?, updated_at = ? WHERE id = ?"
 
-	_, err := a.db.ExecContext(ctx, q, audioFilename, audioContent, ExportPending, noteId)
+	_, err := a.db.ExecContext(ctx, q, audioFilename, audioContent, ExportPending, time.Now(), noteId)
 	return err
 }
 
 func (a Repo) SetAsExported(ctx context.Context, noteId, ankiNoteId int64, status Status) error {
-	q := "UPDATE notes SET status = ?, anki_note_id = ? WHERE id = ?"
-	_, err := a.db.ExecContext(ctx, q, status, ankiNoteId, noteId)
+	q := "UPDATE notes SET status = ?, anki_note_id = ?, exported_at = ? WHERE id = ?"
+	_, err := a.db.ExecContext(ctx, q, status, ankiNoteId, time.Now(), noteId)
 	return err
 }

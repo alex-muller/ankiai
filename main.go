@@ -98,6 +98,11 @@ func main() {
 		if err != nil {
 			log.Fatalf(`run update "%s"`, err)
 		}
+	case "update-notes":
+		err = exporter.Update(ctx)
+		if err != nil {
+			log.Fatalf(`update notes "%s"`, err)
+		}
 	case "telegram":
 		run.Telegram(ctx, telegramService)
 

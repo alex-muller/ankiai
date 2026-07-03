@@ -6,16 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"regexp"
 	"strconv"
-	"time"
 
 	"github.com/alex-muller/ankiai/internal/config"
 	"github.com/alex-muller/ankiai/internal/module/notes"
-	"github.com/vbauerster/mpb/v8"
-	"github.com/vbauerster/mpb/v8/decor"
 )
 
 func NewExporter(conf config.Config, notesRepo *notes.Repo) *Exporter {
@@ -52,50 +48,51 @@ func (a Exporter) Run(ctx context.Context) error {
 }
 
 func (a Exporter) Update(ctx context.Context) error {
-	p := mpb.New(mpb.WithWidth(100))
-
-	total := 0
-	name := "Single Bar:"
-	// create a single bar, which will inherit container's width
-	bar := p.AddBar(int64(total),
-		// BarFillerBuilder with custom style
-		mpb.PrependDecorators(
-			// display our name with one space on the right
-			decor.Name(name, decor.WC{C: decor.DindentRight | decor.DextraSpace}),
-			// replace ETA decorator with "done" message, OnComplete event
-			decor.OnComplete(decor.AverageETA(decor.ET_STYLE_GO), "done"),
-		),
-		mpb.AppendDecorators(decor.Percentage()),
-	)
-
-	bar2 := p.AddBar(int64(total),
-		// BarFillerBuilder with custom style
-		mpb.PrependDecorators(
-			// display our name with one space on the right
-			decor.Name(name, decor.WC{C: decor.DindentRight | decor.DextraSpace}),
-			// replace ETA decorator with "done" message, OnComplete event
-			decor.OnComplete(decor.AverageETA(decor.ET_STYLE_GO), "done"),
-		),
-		mpb.AppendDecorators(decor.Percentage()),
-	)
-
-	bar.SetTotal(100, false)
-	// simulating some work
-	max := 100 * time.Millisecond
-	for range 100 {
-		time.Sleep(time.Duration(rand.Intn(10)+1) * max / 10)
-		bar.Increment()
-		bar2.Increment()
+	notesToUpdate, err_ := a.notesRepo.FindManyForUpdate(ctx, 0)
+	if err_ != nil {
+		return fmt.Errorf(`find notes to update: %w`, err_)
 	}
 
-	bar.Abort(true)
-	bar.SetTotal(50, false)
-	bar.Increment()
+	total := len(notesToUpdate)
+	count := 0
 
-	// wait for our bar to complete and flush
-	p.Wait()
+	for {
+		// Get notes for update
+		notes_, err := a.notesRepo.FindManyForUpdate(ctx, 1)
+		if err != nil {
+			return fmt.Errorf("find notes: %w", err)
+		}
+
+		if len(notes_) == 0 {
+			break
+		}
+
+		note := notes_[0]
+
+		if note.AnkiNoteID == 0 {
+			id, err := a.findAnkiNoteId(ctx, note)
+			if err != nil {
+				return fmt.Errorf("find anki note ID: %w", err)
+			}
+			note.AnkiNoteID = id
+		}
+
+		_, err = a.updateNote(ctx, notes_[0])
+		if err != nil {
+			return fmt.Errorf("update note: %w", err)
+		}
+
+		err = a.notesRepo.SetAsExported(ctx, note.ID, note.AnkiNoteID, notes.Exported)
+
+		count++
+		fmt.Printf("\r Updated %d anki notes from %d \n", count, total)
+	}
 
 	return nil
+}
+
+func (a Exporter) findAnkiNoteId(ctx context.Context, note notes.Note) (int64, error) {
+	panic(`implement me`)
 }
 
 func (a Exporter) runExportCards(ctx context.Context) error {
@@ -115,7 +112,7 @@ func (a Exporter) runExportCards(ctx context.Context) error {
 }
 
 func (a Exporter) exportOneNote(ctx context.Context, note notes.Note) error {
-	ankiNoteId, err := a.exportNote(ctx, note)
+	ankiNoteId, err := a.addNote(ctx, note)
 	if err != nil {
 		return fmt.Errorf(`export note: %w`, err)
 	}
@@ -128,15 +125,24 @@ func (a Exporter) exportOneNote(ctx context.Context, note notes.Note) error {
 	return nil
 }
 
-func (a Exporter) exportNote(ctx context.Context, note notes.Note) (int64, error) {
+func (a Exporter) addNote(ctx context.Context, note notes.Note) (int64, error) {
+	return a.exportNote(ctx, note, `addNote`)
+}
+
+func (a Exporter) updateNote(ctx context.Context, note notes.Note) (int64, error) {
+	return a.exportNote(ctx, note, `updateNoteFields`)
+}
+
+func (a Exporter) exportNote(ctx context.Context, note notes.Note, action string) (int64, error) {
 
 	transformedSentence := a.clozeRegex.ReplaceAllString(note.MarkedSentence, "{{c1::$1}}")
 
 	ankiRequest_ := ankiRequest{
-		Action:  "addNote",
+		Action:  action,
 		Version: 6,
 		Params: ParamNote{
 			Note: Note{
+				Id:        int(note.AnkiNoteID),
 				DeckName:  a.conf.AnkiDeck,
 				ModelName: a.conf.AnkiModel,
 				Fields: Fields{

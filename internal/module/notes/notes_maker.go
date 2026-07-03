@@ -43,7 +43,7 @@ func (a Maker) Run(ctx context.Context) {
 				a.log.Error(`run`, slog.String("error", err.Error()))
 			}
 			fmt.Println(`--- card maker done, sleep ---`)
-			time.Sleep(time.Minute)
+			time.Sleep(time.Second)
 		}
 	}
 
@@ -102,7 +102,7 @@ func (a Maker) processWord(ctx context.Context, word_ word.Word) error {
 }
 
 func (a Maker) processCardJson(ctx context.Context, cardJson CardJson, word_ word.Word) error {
-	now := time.Now()
+	now := time.Now().UTC().Round(time.Second)
 	for _, sens := range cardJson.Senses {
 		for _, example := range sens.Examples {
 			sum := md5.Sum([]byte(example.MarkedSentence))
@@ -125,6 +125,7 @@ func (a Maker) processCardJson(ctx context.Context, cardJson CardJson, word_ wor
 				AudioBase64:    "",
 				Status:         0,
 				CreatedAt:      now,
+				UpdatedAt:      now,
 			}
 
 			err := a.notesRepo.Add(ctx, ankiCard)

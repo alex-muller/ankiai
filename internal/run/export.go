@@ -13,7 +13,7 @@ func Export(ctx context.Context, exporter *export.Exporter) {
 	}
 }
 
-func Update(ctx context.Context, exporter *export.Exporter) {
+func UpdateNotes(ctx context.Context, exporter *export.Exporter) {
 	err := exporter.Update(ctx)
 	if err != nil {
 		panic(err)

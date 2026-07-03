@@ -5,6 +5,7 @@ type ParamNote struct {
 }
 
 type Note struct {
+	Id        int       `json:"id,omitempty"`
 	DeckName  string    `json:"deckName,omitempty"`
 	ModelName string    `json:"modelName,omitempty"`
 	Fields    Fields    `json:"fields,omitempty"`
