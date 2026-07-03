@@ -119,6 +119,20 @@ func (a Tts) runOnce(ctx context.Context) {
 }
 
 func (a Tts) processOneNote(ctx context.Context, note notes.Note) error {
+	err := a.UpdateEn(ctx, note)
+	if err != nil {
+		return fmt.Errorf(`update en: %w`, err)
+	}
+
+	err = a.UpdatePl(ctx, note)
+	if err != nil {
+		return fmt.Errorf(`update pl: %w`, err)
+	}
+
+	return nil
+}
+
+func (a Tts) UpdateEn(ctx context.Context, note notes.Note) error {
 	audioEn, err := a.getPhrase(ctx, note.MarkedSentence, langEn)
 	if err != nil {
 		return fmt.Errorf(`get en phrase: %w`, err)
@@ -129,6 +143,10 @@ func (a Tts) processOneNote(ctx context.Context, note notes.Note) error {
 		return fmt.Errorf(`add audio: %w`, err)
 	}
 
+	return nil
+}
+
+func (a Tts) UpdatePl(ctx context.Context, note notes.Note) error {
 	audioPl, err := a.getPhrase(ctx, note.TranslationPl, langPl)
 	if err != nil {
 		return fmt.Errorf(`get pl phrase: %w`, err)

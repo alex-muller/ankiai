@@ -183,13 +183,13 @@ func (a Exporter) exportNote(ctx context.Context, note notes.Note, action string
 					DefinitionPl:   note.DefinitionPl,
 					TranslationPl:  note.TranslationPl,
 					TranslationRu:  note.TranslationRu,
-					Audio:          ``,
-					AudioPl:        ``,
+					Audio:          ` `,
+					AudioPl:        ` `,
 					Frequency:      strconv.FormatFloat(note.Frequency, 'f', -1, 64),
 				},
 				Options: Options{
 					AllowDuplicate: true,
-					DuplicateScope: "",
+					DuplicateScope: "deck",
 					DuplicateScopeOptions: DuplicateScopeOptions{
 						DeckName:       "",
 						CheckChildren:  false,
