@@ -5,22 +5,32 @@ import (
 	"sync"
 )
 
-type MultiLineLogger struct {
+var l *multiLineLogger
+var mu sync.Mutex
+
+type multiLineLogger struct {
 	mu    sync.Mutex
 	lines []string
 }
 
-func NewLogger(lineCount int) *MultiLineLogger {
-	// Инициализируем пустые строки, чтобы сразу занять место в терминале
-	lines := make([]string, lineCount)
-	for i := 0; i < lineCount; i++ {
-		fmt.Println()
+func NewLogger(prefix string) *Logger {
+	mu.Lock()
+	if l == nil {
+		l = &multiLineLogger{}
 	}
-	return &MultiLineLogger{lines: lines}
+
+	l.lines = append(l.lines, ``)
+	mu.Unlock()
+	fmt.Println()
+	return &Logger{
+		prefix: prefix,
+		line:   len(l.lines) - 1,
+		m:      l,
+	}
 }
 
 // Обновление конкретной строки
-func (ml *MultiLineLogger) UpdateLine(lineIdx int, text string) {
+func (ml *multiLineLogger) updateLine(lineIdx int, text string) {
 	ml.mu.Lock()
 	defer ml.mu.Unlock()
 
@@ -35,4 +45,15 @@ func (ml *MultiLineLogger) UpdateLine(lineIdx int, text string) {
 		// \r — в начало, \033[K — очистить старый хвост, если новая строка короче
 		fmt.Printf("\r\033[K%s\n", line)
 	}
+}
+
+type Logger struct {
+	prefix string
+	line   int
+
+	m *multiLineLogger
+}
+
+func (a *Logger) Log(message string) {
+	a.m.updateLine(a.line, fmt.Sprintf(`[%s] %s`, a.prefix, message))
 }

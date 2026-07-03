@@ -114,12 +114,7 @@ func (a *Service) processWord(ctx context.Context, word_ word.Word) error {
 	l := a.log.With(`method`, `processWord`)
 	l.Info(`start process word ` + word_.Word)
 
-	var requestData GeminiRequest
-
-	if err := json.Unmarshal([]byte(promptWithPl(word_.Word)), &requestData); err != nil {
-		l.Error("failed to parse prompt template", slog.String("error", err.Error()))
-		return err
-	}
+	requestData := promptWithPl(word_.Word)
 
 	resp, err := a.makeRequest(ctx, requestData)
 	if err != nil {
@@ -174,80 +169,127 @@ func (a *Service) makeRequest(ctx context.Context, requestData GeminiRequest) (s
 	return string(body), nil
 }
 
-type GeminiRequest struct {
-	SystemInstruction struct {
-		Parts []struct {
-			Text string `json:"text"`
-		} `json:"parts"`
-	} `json:"systemInstruction"`
-	Contents []struct {
-		Parts []struct {
-			Text string `json:"text"`
-		} `json:"parts"`
-	} `json:"contents"`
-	GenerationConfig map[string]interface{} `json:"generationConfig"`
-}
-
-func promptWithPl(word string) string {
-	return `
-{
-  "systemInstruction": {
-    "parts": [
-      {
-        "text": "Ты — профессиональный лексикограф и эксперт по иммерсивному изучению языков. Твоя задача — проанализировать английское слово или фразу и вернуть структурированные данные. Правила:\n1. Полисемия и Часть речи: Покрой основные смыслы и обязательно укажи часть речи (part_of_speech) на английском.\n2. Перевод: Для каждого смысла дай точный перевод самого слова или фразы на русский язык (translation_ru) и на польский язык (translation_pl). Перевод на польский должен быть максимально естественным и идиоматичным для носителей языка (избегай буквального перевода английских конструкций).\n3. Примеры и Морфологическое разнообразие: Сгенерируй столько примеров, сколько нужно, чтобы покрыть морфологическое разнообразие слова. КРИТИЧЕСКИ ВАЖНО: целевое слово должно менять свою форму от примера к примеру. В 'grammar_note' кратко укажи использованную форму СТРОГО НА АНГЛИЙСКОМ ЯЗЫКЕ (например: Past Simple, Plural Noun, Gerund). Для каждого примера дай перевод предложения на русский (translation) и естественный перевод на польский (translation_pl).\n4. ДЕРИВАЦИЯ (Производные слова): Если целевое слово образует часто используемые производные, обязательно выдели их в отдельные смыслы (senses) с указанием соответствующей части речи.\n5. ВАЖНО (РАЗМЕТКА): Целевое слово или фраза в каждом примере должны встречаться строго один раз. Обязательно выделяй двойными звездочками ИМЕННО ту морфологическую форму, которая использована в тексте. Не выделяй слово в переводе.\n6. Форма слова: Для каждого примера выведи в поле 'target_word_form' ту точную форму слова/фразы, которая была использована.\n7. Определения и Синонимы: Для каждого смысла напиши простое и понятное толкование на английском (definition_en), краткий перевод на русский (definition_ru), естественное толкование смысла на польском языке (definition_pl) и 2-3 синонима на английском."
-      }
-    ]
-  },
-  "contents": [
-    {
-      "parts": [
-        {
-          "text": "Проанализируй выражение: '` + word + `'"
-        }
-      ]
-    }
-  ],
-  "generationConfig": {
-    "responseMimeType": "application/json",
-    "responseSchema": {
-      "type": "OBJECT",
-      "properties": {
-        "lemma": { "type": "STRING" },
-        "senses": {
-          "type": "ARRAY",
-          "items": {
-            "type": "OBJECT",
-            "properties": {
-              "part_of_speech": { "type": "STRING", "description": "e.g., noun, verb, adjective" },
-              "translation_ru": { "type": "STRING", "description": "Точный перевод самого слова на русский" },
-              "translation_pl": { "type": "STRING", "description": "Naturalny i idiomatyczny przekład słowa na język polski" },
-              "definition_en": { "type": "STRING", "description": "Clear English explanation of the meaning" },
-              "definition_ru": { "type": "STRING", "description": "Kratkoe tolkovanie smysla na russkom" },
-              "definition_pl": { "type": "STRING", "description": "Krótkie i zrozumiałe wyjaśnienie znaczenia po polsku" },
-              "synonyms": { "type": "ARRAY", "items": { "type": "STRING" } },
-              "examples": {
-                "type": "ARRAY",
-                "items": {
-                  "type": "OBJECT",
-                  "properties": {
-                    "grammar_note": { "type": "STRING", "description": "e.g., Past Simple (V2), Present Continuous, Plural" },
-                    "target_word_form": { "type": "STRING", "description": "Точная форма слова, использованная в примере" },
-                    "marked_sentence": { "type": "STRING", "description": "Предложение с разметкой **word**" },
-                    "translation": { "type": "STRING", "description": "Перевод предложения на русский" },
-                    "translation_pl": { "type": "STRING", "description": "Naturalne tłumaczenie całego zdania na język polski" }
-                  },
-                  "required": ["grammar_note", "target_word_form", "marked_sentence", "translation", "translation_pl"]
-                }
-              }
-            },
-            "required": ["part_of_speech", "translation_ru", "translation_pl", "definition_en", "definition_ru", "definition_pl", "synonyms", "examples"]
-          }
-        }
-      },
-      "required": ["lemma", "senses"]
-    }
-  }
-}`
+func promptWithPl(word string) GeminiRequest {
+	return GeminiRequest{
+		SystemInstruction: &Content{
+			Parts: []Part{
+				{
+					Text: `Ты — профессиональный лексикограф и эксперт по иммерсивному изучению языков. Твоя задача — проанализировать английское слово или фразу и вернуть структурированные данные. Правила:
+1. Полисемия и Часть речи: Покрой основные смыслы и обязательно укажи часть речи (part_of_speech) на английском.
+2. Перевод: Для каждого смысла дай точный перевод самого слова или фразы на русский язык (translation_ru) и на польский язык (translation_pl). Перевод на польский должен быть максимально естественным и идиоматичным для носителей языка (избегай буквального перевода английских конструкций).
+3. Примеры и Морфологическое разнообразие: Сгенерируй столько примеров, сколько нужно, чтобы предотвратить морфологическое разнообразие слова. КРИТИЧЕСКИ ВАЖНО: целевое слово должно менять свою форму от примера к примеру. В 'grammar_note' кратко укажи использованную форму СТРОГО НА АНГЛИЙСКОМ ЯЗЫКЕ (например: Past Simple, Plural Noun, Gerund). Для каждого примера дай перевод предложения на русский (translation) и естественный перевод на польский (translation_pl).
+4. ДЕРИВАЦИЯ (Производные слова): Если целевое слово образует часто используемые производные, обязательно выдели их в отдельные смыслы (senses) с указанием соответствующей части речи.
+5. ВАЖНО (РАЗМЕТКА): Целевое слово или фраза в каждом примере должны встречаться строго один раз. Обязательно выделяй двойными звездочками ИМЕННО ту морфологическую форму, которая использована в тексте. Не выделяй слово в переводе.
+6. Форма слова: Для каждого примера выведи в поле 'target_word_form' ту точную форму слова/фразы, которая была использована.
+7. Определения и Синонимы: Для каждого смысла напиши простое и понятное толкование на английском (definition_en), краткий перевод на русский (definition_ru), естественное толкование смысла на польском языке (definition_pl) и 2-3 синонима на английском.`,
+				},
+			},
+		},
+		Contents: []Content{
+			{
+				Parts: []Part{
+					{
+						Text: "Проанализируй выражение: '" + word + "'",
+					},
+				},
+			},
+		},
+		GenerationConfig: &GenerationConfig{
+			ResponseMimeType: "application/json",
+			ResponseSchema: &Schema{
+				Type:     "OBJECT",
+				Required: []string{"lemma", "senses"},
+				Properties: map[string]*Schema{
+					"lemma": {
+						Type: "STRING",
+					},
+					"senses": {
+						Type: "ARRAY",
+						Items: &Schema{
+							Type: "OBJECT",
+							Required: []string{
+								"part_of_speech",
+								"translation_ru",
+								"translation_pl",
+								"definition_en",
+								"definition_ru",
+								"definition_pl",
+								"synonyms",
+								"examples",
+							},
+							Properties: map[string]*Schema{
+								"part_of_speech": {
+									Type:        "STRING",
+									Description: "e.g., noun, verb, adjective",
+								},
+								"translation_ru": {
+									Type:        "STRING",
+									Description: "Точный перевод самого слова на русский",
+								},
+								"translation_pl": {
+									Type:        "STRING",
+									Description: "Naturalny i idiomatyczny przekład słowa na język polski",
+								},
+								"definition_en": {
+									Type:        "STRING",
+									Description: "Clear English explanation of the meaning",
+								},
+								"definition_ru": {
+									Type:        "STRING",
+									Description: "Kratkoe tolkovanie smysla na russkom",
+								},
+								"definition_pl": {
+									Type:        "STRING",
+									Description: "Krótkie i zrozumiałe wyjaśnienie znaczenia po polsku",
+								},
+								"synonyms": {
+									Type: "ARRAY",
+									Items: &Schema{
+										Type: "STRING",
+									},
+								},
+								"examples": {
+									Type: "ARRAY",
+									Items: &Schema{
+										Type: "OBJECT",
+										Required: []string{
+											"grammar_note",
+											"target_word_form",
+											"marked_sentence",
+											"translation",
+											"translation_pl",
+										},
+										Properties: map[string]*Schema{
+											"grammar_note": {
+												Type:        "STRING",
+												Description: "e.g., Past Simple (V2), Present Continuous, Plural",
+											},
+											"target_word_form": {
+												Type:        "STRING",
+												Description: "Точная форма слова, использованная в примере",
+											},
+											"marked_sentence": {
+												Type:        "STRING",
+												Description: "Предложение с разметкой **word**",
+											},
+											"translation": {
+												Type:        "STRING",
+												Description: "Перевод предложения на русский",
+											},
+											"translation_pl": {
+												Type:        "STRING",
+												Description: "Naturalne tłumaczenie całego zdania na język polski",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 }
 
 func (a *Service) GetPlTranslate(
@@ -258,13 +300,9 @@ func (a *Service) GetPlTranslate(
 	definitionEn,
 	definitionRu string,
 ) (PlPatchResponse, error) {
-	var req GeminiRequest
 	var out PlPatchResponse
 
-	err := json.Unmarshal([]byte(promptOnlyPlExamplePatch(targetWordForm, exampleEn, exampleTranslationRu, definitionEn, definitionRu)), &req)
-	if err != nil {
-		return out, fmt.Errorf("unmarshal pl example: %w", err)
-	}
+	req := promptOnlyPlExamplePatch(targetWordForm, exampleEn, exampleTranslationRu, definitionEn, definitionRu)
 
 	resp, err := a.makeRequest(ctx, req)
 
@@ -283,37 +321,56 @@ func (a *Service) GetPlTranslate(
 	return out, nil
 }
 
-func promptOnlyPlExamplePatch(targetWordForm, exampleEn, exampleTranslationRu, definitionEn, definitionRu string) string {
-	return `
-{
-  "systemInstruction": {
-    "parts": [
-      {
-        "text": "Ты — эксперт-переводчик со специализацией на паре русский-польский и английский-польский. Твоя задача — проанализировать английский пример и его русский контекст, а затем вернуть перевод и толкование на естественном, живом и идиоматичном польском языке.\n\nПРАВИЛА ПЕРЕВОДА:\n1. Используй предоставленный русский перевод предложения (example_translation_ru) и русское толкование (definition_ru) как точный ориентир смысла. Польский перевод должен строго соответствовать этому контексту.\n2. Переведи английское определение (definition_en) на польский язык (definition_pl).\n3. Переведи само английское предложение-пример (example_en) на польский язык (example_translation_pl). Перевод предложения должен звучать максимально естественно для носителей языка, избегай кальки английских или русских фраз."
-      }
-    ]
-  },
-  "contents": [
-    {
-      "parts": [
-        {
-          "text": "Целевое слово (форма): '` + targetWordForm + `'\n\nОРИЕНТИР СМЫСЛА:\nТолкование на русском: '` + definitionRu + `'\nПеревод предложения на русский: '` + exampleTranslationRu + `'\n\nАНГЛИЙСКИЙ КОНТЕКСТ:\nОпределение на английском: '` + definitionEn + `'\nПредложение на английском: '` + exampleEn + `'"
-        }
-      ]
-    }
-  ],
-  "generationConfig": {
-    "responseMimeType": "application/json",
-    "responseSchema": {
-      "type": "OBJECT",
-      "properties": {
-        "definition_pl": { "type": "STRING", "description": "Wyjaśnienie znaczenia słowa po polsku, odpowiadające kontekstowi" },
-        "example_translation_pl": { "type": "STRING", "description": "Naturalne i idiomatyczne tłumaczenie całego zdania przykładowego na język polski" }
-      },
-      "required": ["definition_pl", "example_translation_pl"]
-    }
-  }
-}`
+func promptOnlyPlExamplePatch(targetWordForm, exampleEn, exampleTranslationRu, definitionEn, definitionRu string) GeminiRequest {
+	return GeminiRequest{
+		SystemInstruction: &Content{
+			Parts: []Part{
+				{
+					Text: "Ты — эксперт-переводчик со специализацией на паре русский-польский и английский-польский. " +
+						"Твоя задача — проанализировать английский пример и его русский контекст, а затем вернуть перевод " +
+						"и толкование на естественном, живом и идиоматичном польском языке.\n\n" +
+						"ПРАВИЛА ПЕРЕВОДА:\n" +
+						"1. Используй предоставленный русский перевод предложения (example_translation_ru) и русское " +
+						"толкование (definition_ru) как точный ориентир смысла. Польский перевод должен строго " +
+						"соответствовать этому контексту.\n" +
+						"2. Переведи английское определение (definition_en) на польский язык (definition_pl).\n" +
+						"3. Переведи само английское предложение-пример (example_en) на польский язык (example_translation_pl). " +
+						"Перевод предложения должен звучать максимально естественно для носителей языка, " +
+						"избегай кальки английских или русских фраз.",
+				},
+			},
+		},
+		Contents: []Content{
+			{
+				Parts: []Part{
+					{
+						Text: `Целевое слово (форма): '` + targetWordForm + `'\n\nОРИЕНТИР СМЫСЛА:\nТолкование на русском: '` +
+							definitionRu + `'\nПеревод предложения на русский: '` + exampleTranslationRu +
+							`'\n\nАНГЛИЙСКИЙ КОНТЕКСТ:\nОпределение на английском: '` + definitionEn +
+							`'\nПредложение на английском: '` + exampleEn + `'`,
+					},
+				},
+			},
+		},
+		GenerationConfig: &GenerationConfig{
+			ResponseMimeType: "application/json",
+			ResponseSchema: &Schema{
+				Type:        "OBJECT",
+				Description: "",
+				Properties: map[string]*Schema{
+					"definition_pl": {
+						Type:        "STRING",
+						Description: "Wyjaśnienie znaczenia słowa po polsku, odpowiadające kontekstowi",
+					},
+					"example_translation_pl": {
+						Type:        "STRING",
+						Description: "Naturalne i idiomatyczne tłumaczenie całego zdania przykładowego na język polski",
+					},
+				},
+				Required: []string{"definition_pl", "example_translation_pl"},
+			},
+		},
+	}
 }
 
 type PlPatchResponse struct {
@@ -345,4 +402,40 @@ type PlResponse struct {
 	} `json:"usageMetadata"`
 	ModelVersion string `json:"modelVersion"`
 	ResponseId   string `json:"responseId"`
+}
+
+// RequestPayload — корневая структура для обоих JSON.
+type GeminiRequest struct {
+	SystemInstruction *Content          `json:"systemInstruction,omitempty"`
+	Contents          []Content         `json:"contents"`
+	GenerationConfig  *GenerationConfig `json:"generationConfig,omitempty"`
+}
+
+type Content struct {
+	Parts []Part `json:"parts"`
+}
+
+type Part struct {
+	Text string `json:"text"`
+}
+
+type GenerationConfig struct {
+	ResponseMimeType string  `json:"responseMimeType,omitempty"`
+	ResponseSchema   *Schema `json:"responseSchema,omitempty"`
+}
+
+// Schema — рекурсивная структура, описывающая JSON Schema.
+type Schema struct {
+	Type        string `json:"type"`                  // Например: "OBJECT", "ARRAY", "STRING"
+	Description string `json:"description,omitempty"` // Описание поля, если есть
+
+	// Properties использует map, так как ключи (имена полей) неизвестны заранее
+	// и отличаются в разных запросах (например, "definition_pl" или "senses").
+	Properties map[string]*Schema `json:"properties,omitempty"`
+
+	// Items содержит описание элементов массива, если Type == "ARRAY".
+	// Используется указатель для рекурсии.
+	Items *Schema `json:"items,omitempty"`
+
+	Required []string `json:"required,omitempty"` // Список обязательных полей
 }

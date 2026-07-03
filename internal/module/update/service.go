@@ -24,22 +24,26 @@ func New(
 	tts *tts.Tts,
 ) Service {
 	return Service{
-		freq:      freq,
-		wordsRepo: wordsRepo,
-		notesRepo: notesRepo,
-		lex:       lex,
-		tts:       tts,
-		logger:    logger.NewLogger(3),
+		freq:       freq,
+		wordsRepo:  wordsRepo,
+		notesRepo:  notesRepo,
+		lex:        lex,
+		tts:        tts,
+		loggerTr:   logger.NewLogger("TRANSLATE"),
+		loggerFreq: logger.NewLogger("FREQUENCY"),
+		loggerTts:  logger.NewLogger("TTS"),
 	}
 }
 
 type Service struct {
-	freq      frequency.FrequencyService
-	wordsRepo *word2.Repository
-	notesRepo *notes.Repo
-	lex       *lexicographer.Service
-	tts       *tts.Tts
-	logger    *logger.MultiLineLogger
+	freq       frequency.FrequencyService
+	wordsRepo  *word2.Repository
+	notesRepo  *notes.Repo
+	lex        *lexicographer.Service
+	tts        *tts.Tts
+	loggerFreq *logger.Logger
+	loggerTr   *logger.Logger
+	loggerTts  *logger.Logger
 }
 
 func (a Service) Run(ctx context.Context) error {
@@ -77,34 +81,56 @@ func (a Service) Run(ctx context.Context) error {
 	}
 
 	return nil
-
 }
 
 func (a Service) updatePlTTS(ctx context.Context) error {
-	notes_, err := a.notesRepo.FindManyForPolishTTSUpdate(ctx, 0)
-	if err != nil {
-		return fmt.Errorf(`find notes: %w`, err)
-	}
-
-	total := len(notes_)
+	var total int
 	var count int
 
-	limitPerMinute := 10
+	limitPerMinute := 30
 	workers := 10
 
 	ch := make(chan notes.Note)
 
+	bulkWg := sync.WaitGroup{}
+
 	go func() {
 		defer close(ch)
-		for _, note := range notes_ {
-			select {
-			case <-ctx.Done():
+		var retry int
+		for {
+			if retry >= 5 {
 				return
-			case ch <- note:
 			}
 
-			time.Sleep(time.Minute / time.Duration(limitPerMinute))
+			notes_, err := a.notesRepo.FindManyForPolishTTSUpdate(ctx, 0)
+			if err != nil {
+				panic(err)
+			}
+
+			if len(notes_) == 0 {
+				a.loggerTts.Log(fmt.Sprintf("Updated %d of %d. Pause and retry #%d", count, total, retry))
+				time.Sleep(time.Second * 10)
+				retry++
+				continue
+			}
+
+			total += len(notes_)
+
+			for _, note := range notes_ {
+				bulkWg.Add(1)
+
+				select {
+				case <-ctx.Done():
+					return
+				case ch <- note:
+				}
+
+				time.Sleep(time.Minute / time.Duration(limitPerMinute))
+			}
+			bulkWg.Wait()
+			retry = 0
 		}
+
 	}()
 
 	wg := sync.WaitGroup{}
@@ -122,7 +148,7 @@ func (a Service) updatePlTTS(ctx context.Context) error {
 					if !ok {
 						return
 					}
-					err = a.updateOnePlTtsNote(ctx, n)
+					err := a.updateOnePlTtsNote(ctx, n)
 					if err != nil {
 						panic(err)
 					}
@@ -130,7 +156,8 @@ func (a Service) updatePlTTS(ctx context.Context) error {
 					mu.Lock()
 					count++
 					mu.Unlock()
-					a.logger.UpdateLine(2, fmt.Sprintf("PL TTS updated %d of %d", count, total))
+					a.loggerTts.Log(fmt.Sprintf("PL TTS updated %d of %d", count, total))
+					bulkWg.Done()
 				}
 			}
 		}()
@@ -150,29 +177,51 @@ func (a Service) updateOnePlTtsNote(ctx context.Context, n notes.Note) error {
 }
 
 func (a Service) updatePlTranslate(ctx context.Context) error {
-	notes_, err := a.notesRepo.FindManyForPolishTranslateUpdate(ctx, 0)
-	if err != nil {
-		return fmt.Errorf(`find notes: %w`, err)
-	}
-
-	total := len(notes_)
+	var total int
 	var count int
 
 	limitPerMinute := 100
 	workers := 10
 
 	ch := make(chan notes.Note)
+	bulkWg := sync.WaitGroup{}
 
 	go func() {
 		defer close(ch)
-		for _, note := range notes_ {
-			select {
-			case <-ctx.Done():
+		var retry int
+		for {
+			if retry >= 5 {
 				return
-			case ch <- note:
+			}
+			notes_, err := a.notesRepo.FindManyForPolishTranslateUpdate(ctx, 0)
+			if err != nil {
+				panic(err)
+				return
 			}
 
-			time.Sleep(time.Minute / time.Duration(limitPerMinute))
+			if len(notes_) == 0 {
+				a.loggerTr.Log(fmt.Sprintf("Updated %d of %d. Pause and retry #%d", count, total, retry))
+				time.Sleep(time.Second * 10)
+				retry++
+				continue
+			}
+
+			total += len(notes_)
+
+			for _, note := range notes_ {
+				bulkWg.Add(1)
+				select {
+				case <-ctx.Done():
+					return
+				case ch <- note:
+				}
+
+				time.Sleep(time.Minute / time.Duration(limitPerMinute))
+			}
+
+			bulkWg.Wait()
+
+			retry = 0
 		}
 	}()
 
@@ -191,7 +240,7 @@ func (a Service) updatePlTranslate(ctx context.Context) error {
 					if !ok {
 						return
 					}
-					err = a.updatePlOneNote(ctx, n)
+					err := a.updatePlOneNote(ctx, n)
 					if err != nil {
 						panic(err)
 					}
@@ -199,7 +248,8 @@ func (a Service) updatePlTranslate(ctx context.Context) error {
 					mu.Lock()
 					count++
 					mu.Unlock()
-					a.logger.UpdateLine(1, fmt.Sprintf("PL translate updated %d of %d", count, total))
+					a.loggerTr.Log(fmt.Sprintf("PL translate updated %d of %d", count, total))
+					bulkWg.Done()
 				}
 			}
 		}()
@@ -239,7 +289,7 @@ func (a Service) updateFreq(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf(`count of frequency left: %w`, err)
 		}
-		a.logger.UpdateLine(0, fmt.Sprintf("Process frequency. Left: %d", left))
+		a.loggerFreq.Log(fmt.Sprintf("Process frequency. Left: %d", left))
 
 		if left == 0 {
 			break
@@ -254,7 +304,7 @@ func (a Service) updateFreq(ctx context.Context) error {
 
 		if err != nil {
 			if strings.Contains(err.Error(), `429`) {
-				a.logger.UpdateLine(0, `Frequency limit exceeded. Sleep`)
+				a.loggerFreq.Log(`Frequency limit exceeded. Sleep`)
 				time.Sleep(time.Minute * 10)
 				continue
 			}
