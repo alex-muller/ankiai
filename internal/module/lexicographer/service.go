@@ -266,6 +266,10 @@ func (a *Service) GetPlTranslate(
 		return out, fmt.Errorf("unmarshal pl example: %w", err)
 	}
 
+	resp, err := a.makeRequest(ctx, req)
+
+	_ = resp
+
 	return out, nil
 }
 
