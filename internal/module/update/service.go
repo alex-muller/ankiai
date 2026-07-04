@@ -87,7 +87,7 @@ func (a Service) updatePlTTS(ctx context.Context) error {
 	var total int
 	var count int
 
-	limitPerMinute := 30
+	limitPerMinute := 60
 	workers := 10
 
 	ch := make(chan notes.Note)
@@ -180,7 +180,7 @@ func (a Service) updatePlTranslate(ctx context.Context) error {
 	var total int
 	var count int
 
-	limitPerMinute := 100
+	limitPerMinute := 70
 	workers := 10
 
 	ch := make(chan notes.Note)
@@ -247,8 +247,8 @@ func (a Service) updatePlTranslate(ctx context.Context) error {
 
 					mu.Lock()
 					count++
-					mu.Unlock()
 					a.loggerTr.Log(fmt.Sprintf("PL translate updated %d of %d", count, total))
+					mu.Unlock()
 					bulkWg.Done()
 				}
 			}

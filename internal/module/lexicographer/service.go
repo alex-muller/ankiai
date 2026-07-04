@@ -305,6 +305,9 @@ func (a *Service) GetPlTranslate(
 	req := promptOnlyPlExamplePatch(targetWordForm, exampleEn, exampleTranslationRu, definitionEn, definitionRu)
 
 	resp, err := a.makeRequest(ctx, req)
+	if err != nil {
+		return out, fmt.Errorf(`make request: %w`, err)
+	}
 
 	var respStruct PlResponse
 

@@ -81,9 +81,10 @@ func (a Repo) FindManyForAnkiUpdate(ctx context.Context, limit int) ([]Note, err
 	SELECT n.*, w.frequency FROM notes n 
 		LEFT JOIN words w ON n.word_id = w.id 
 	WHERE n.exported_at < n.updated_at 
+	AND n.status = ?
 	ORDER BY w.frequency DESC%s`,
 		limitStr)
-	rows, err := a.db.QueryxContext(ctx, query)
+	rows, err := a.db.QueryxContext(ctx, query, Exported)
 	if err != nil {
 		return nil, err
 	}

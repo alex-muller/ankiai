@@ -77,6 +77,17 @@ func (a Exporter) Update(ctx context.Context) error {
 			note.AnkiNoteID = id
 		}
 
+		if note.AnkiNoteID == 0 {
+			note.Status = notes.ExportPending
+			note.ExportedAt = nil
+			err = a.notesRepo.Update(ctx, note)
+			if err != nil {
+				return fmt.Errorf("update notes: %w", err)
+			}
+			count++
+			continue
+		}
+
 		_, err = a.updateNote(ctx, note)
 		if err != nil {
 			return fmt.Errorf("update note: %w", err)
@@ -113,7 +124,7 @@ func (a Exporter) findAnkiNoteId(ctx context.Context, note notes.Note) (int64, e
 	}
 
 	if len(idList) != 1 {
-		return 0, fmt.Errorf(`expected 1 id, but got %d`, len(idList))
+		return 0, nil
 	}
 
 	return idList[0], nil
@@ -183,8 +194,8 @@ func (a Exporter) exportNote(ctx context.Context, note notes.Note, action string
 					DefinitionPl:   note.DefinitionPl,
 					TranslationPl:  note.TranslationPl,
 					TranslationRu:  note.TranslationRu,
-					Audio:          ` `,
-					AudioPl:        ` `,
+					Audio:          note.AudioFilename,
+					AudioPl:        note.AudioFilenamePl,
 					Frequency:      strconv.FormatFloat(note.Frequency, 'f', -1, 64),
 				},
 				Options: Options{
@@ -197,20 +208,25 @@ func (a Exporter) exportNote(ctx context.Context, note notes.Note, action string
 					},
 				},
 				Tags: nil,
-				Audio: []Audio{
-					{
-						Data:     note.AudioBase64,
-						Filename: note.AudioFilename,
-						SkipHash: "",
-						Fields:   []string{"audio"},
-					},
-					{
-						Data:     note.AudioBase64Pl,
-						Filename: note.AudioFilenamePl,
-						SkipHash: "",
-						Fields:   []string{"audio_pl"},
-					},
-				},
+				Audio: func() []Audio {
+					out := []Audio{
+						{
+							Data:     note.AudioBase64,
+							Filename: note.AudioFilename,
+							SkipHash: "",
+							// Fields:   []string{"audio"},
+						},
+					}
+					if note.AudioFilenamePl != `` {
+						out = append(out, Audio{
+							Data:     note.AudioBase64Pl,
+							Filename: note.AudioFilenamePl,
+							SkipHash: "",
+							// Fields:   []string{"audio_pl"},
+						})
+					}
+					return out
+				}(),
 			},
 		},
 	}

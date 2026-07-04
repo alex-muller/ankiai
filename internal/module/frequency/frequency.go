@@ -108,8 +108,6 @@ func (a *FrequencyService) RunOnceOnPhrases(ctx context.Context, phrases []strin
 		return fmt.Errorf(`update frequencies: %w`, err)
 	}
 
-	fmt.Println(fmt.Sprintf("Calculated Ngram Averages: %v", words))
-
 	return nil
 }
 
