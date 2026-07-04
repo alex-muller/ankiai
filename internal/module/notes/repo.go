@@ -189,9 +189,9 @@ func (a Repo) AddAudio(ctx context.Context, noteId int64, audioContent, audioFil
 }
 
 func (a Repo) AddAudioPl(ctx context.Context, noteId int64, audioContent, audioFilename string) error {
-	q := "UPDATE notes SET audio_filename_pl = ?, audio_base64_pl = ?, status = ?, updated_at = ? WHERE id = ?"
+	q := "UPDATE notes SET audio_filename_pl = ?, audio_base64_pl = ?, updated_at = ? WHERE id = ?"
 
-	_, err := a.db.ExecContext(ctx, q, audioFilename, audioContent, ExportPending, time.Now().UTC(), noteId)
+	_, err := a.db.ExecContext(ctx, q, audioFilename, audioContent, time.Now().UTC(), noteId)
 	return err
 }
 

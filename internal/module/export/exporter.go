@@ -199,8 +199,8 @@ func (a Exporter) exportNote(ctx context.Context, note notes.Note, action string
 					Frequency:      strconv.FormatFloat(note.Frequency, 'f', -1, 64),
 				},
 				Options: Options{
-					AllowDuplicate: true,
-					DuplicateScope: "deck",
+					AllowDuplicate: false,
+					DuplicateScope: "",
 					DuplicateScopeOptions: DuplicateScopeOptions{
 						DeckName:       "",
 						CheckChildren:  false,

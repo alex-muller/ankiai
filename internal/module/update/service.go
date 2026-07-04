@@ -180,7 +180,7 @@ func (a Service) updatePlTranslate(ctx context.Context) error {
 	var total int
 	var count int
 
-	limitPerMinute := 70
+	limitPerMinute := 60
 	workers := 10
 
 	ch := make(chan notes.Note)
