@@ -184,19 +184,19 @@ func (a Repo) GetManyByStatus(ctx context.Context, status Status, limit int) ([]
 func (a Repo) AddAudio(ctx context.Context, noteId int64, audioContent, audioFilename string) error {
 	q := "UPDATE notes SET audio_filename = ?, audio_base64 = ?, status = ?, updated_at = ?  WHERE id = ?"
 
-	_, err := a.db.ExecContext(ctx, q, audioFilename, audioContent, ExportPending, time.Now(), noteId)
+	_, err := a.db.ExecContext(ctx, q, audioFilename, audioContent, ExportPending, time.Now().UTC(), noteId)
 	return err
 }
 
 func (a Repo) AddAudioPl(ctx context.Context, noteId int64, audioContent, audioFilename string) error {
 	q := "UPDATE notes SET audio_filename_pl = ?, audio_base64_pl = ?, status = ?, updated_at = ? WHERE id = ?"
 
-	_, err := a.db.ExecContext(ctx, q, audioFilename, audioContent, ExportPending, time.Now(), noteId)
+	_, err := a.db.ExecContext(ctx, q, audioFilename, audioContent, ExportPending, time.Now().UTC(), noteId)
 	return err
 }
 
 func (a Repo) SetAsExported(ctx context.Context, noteId, ankiNoteId int64, status Status) error {
 	q := "UPDATE notes SET status = ?, anki_note_id = ?, exported_at = ? WHERE id = ?"
-	_, err := a.db.ExecContext(ctx, q, status, ankiNoteId, time.Now(), noteId)
+	_, err := a.db.ExecContext(ctx, q, status, ankiNoteId, time.Now().UTC(), noteId)
 	return err
 }
